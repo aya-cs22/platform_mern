@@ -1,0 +1,20 @@
+.bg-form {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-image: url("/images/img.webp");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  width: 100%;
+}
+form {
+  backdrop-filter: blur(50px);
+  width: 40%;
+}
+@media (max-width: 767px) {
+  form {
+    width: 80%;
+  }
+}

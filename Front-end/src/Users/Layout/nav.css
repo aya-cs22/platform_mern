@@ -1,0 +1,84 @@
+header {
+    position: fixed;
+    width: 100%;
+    z-index: 9999;
+  }
+  header .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  header .container h1.navbar-brand{
+    font-size: 25px;
+  }
+  header .container .btn {
+    display: none;
+  }
+  
+  @media (max-width: 767px) {
+    header .container .btn {
+      display: block;
+    }
+  
+    header .container ul {
+      flex-direction: column;
+      position: absolute;
+      top: 40px;
+      left: 0;
+      transform: translateX(-100%);
+      /* width: 100%; */
+    }
+    header .container ul.responsive {
+      transition: 0.5s;
+      transform: translateX(0);
+      width: 100%;
+      background-color: white;
+      margin-top: 10px;
+    }
+  }
+  /* end header */
+  /* Main.css */
+.main-background {
+  background-image: url('/images/bg.webp');
+  background-size: cover;
+  background-position: center;
+  height: 90vh;  
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+.main-content {
+  text-align: center;
+  font-size: 2rem;
+  max-width: 80%;
+  background-color: rgba(0, 0, 0, 0.5); 
+  padding: 20px;
+  border-radius: 8px;
+}
+
+
+
+
+/* Adjustments for smaller screens */
+@media (max-width: 768px) {
+
+  .main-content h1 {
+    font-size: 35px; 
+  }
+  .main-content p {
+    font-size: 20px; 
+  }
+}
+
+/* Adjustments for very small screens */
+@media (max-width: 480px) {
+
+  .main-content h1 {
+    font-size: 20px; 
+  }
+  .main-content p {
+    font-size: 15px; 
+  }
+}
