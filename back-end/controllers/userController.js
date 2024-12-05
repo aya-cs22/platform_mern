@@ -16,6 +16,7 @@ const generateVerificationCode = () => {
     return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+// register user
 exports.register = async (req, res) => {
     try {
         const { name, email, password, phone_number } = req.body;
@@ -90,6 +91,7 @@ exports.register = async (req, res) => {
     }
 };
 
+//verify Email
 exports.verifyEmail = async (req, res) => {
     try {
         const { email, code } = req.body;
@@ -145,6 +147,7 @@ exports.checkVerificationTimeout = async () => {
     }
 };
 
+// forget password
 exports.forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
@@ -193,6 +196,7 @@ exports.forgotPassword = async (req, res) => {
     }
 };
 
+// update password
 exports.resetPassword = async (req, res) => {
     try {
         const { resetCode, newPassword } = req.body;
@@ -243,6 +247,7 @@ exports.resetPassword = async (req, res) => {
 //     }
 // };
 
+
 exports.login = async (req, res) => {
     const { email, password } = req.body;
 
@@ -283,7 +288,6 @@ exports.login = async (req, res) => {
     }
 };
 
-
 // add user by admin
 exports.addUser = async (req, res) => {
     const session = await mongoose.startSession();
@@ -294,19 +298,25 @@ exports.addUser = async (req, res) => {
         }
 
         const { name, email, password, phone_number, role, groupId } = req.body;
-        if (!name || !email || !password || !phone_number || !role || !groupId) {
-            return res.status(400).json({ message: 'All fields are required' });
+        if (!name || !email || !password || !phone_number || !role) {
+            return res.status(400).json({ message: 'All fields except groupId are required' });
         }
+
         const exists_user = await User.findOne({ email });
         if (exists_user) {
             return res.status(400).json({ message: 'User already exists' });
         }
-        const group = await Groups.findById(groupId);
-        if (!group) {
-            return res.status(404).json({ message: 'Group not found' });
+
+        let group;
+        if (groupId) {
+            group = await Groups.findById(groupId);
+            if (!group) {
+                return res.status(404).json({ message: 'Group not found' });
+            }
         }
 
-        session.startTransaction();
+        await session.startTransaction();
+
         const newUser = new User({
             name,
             email,
@@ -314,36 +324,40 @@ exports.addUser = async (req, res) => {
             phone_number,
             role,
             isVerified: true,
-            groupId: [{ group_id: groupId }],
+            groupId: group ? [{ group_id: groupId }] : [],
         });
 
         await newUser.save({ session });
-        const newUserGroup = new UserGroup({
-            user_id: newUser._id,
-            group_id: groupId,
-            status: 'active',
-        });
-        await newUserGroup.save({ session });
 
-        const newJoinRequest = new JoinRequests({
-            user_id: newUser._id,
-            group_id: groupId,
-            status: 'approved',
-            startDate: new Date(),
-        });
+        if (group) {
+            const newUserGroup = new UserGroup({
+                user_id: newUser._id,
+                group_id: groupId,
+                status: 'active',
+            });
+            await newUserGroup.save({ session });
 
-        await newJoinRequest.save({ session });
+            const newJoinRequest = new JoinRequests({
+                user_id: newUser._id,
+                group_id: groupId,
+                status: 'approved',
+                startDate: new Date(),
+            });
 
-        group.members.push({ user_id: newUser._id });
+            await newJoinRequest.save({ session });
 
-        await group.save({ session });
+            group.members.push({ user_id: newUser._id });
+            await group.save({ session });
+        }
+
         await session.commitTransaction();
-
         session.endSession();
 
         res.status(201).json({ message: 'User added successfully', user: newUser });
     } catch (error) {
-        await session.abortTransaction();
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
         session.endSession();
 
         console.error('Error adding user: ', error);
@@ -420,9 +434,7 @@ exports.getAllUsers = async (req, res) => {
 };
 
 
-
-
-// update user by admin => role and user can edit all data expect role
+// update user by admin => update only role and user can edit all data expect role
 exports.updateUser = async (req, res) => {
     try {
         const { name, email, password, role, phone_number } = req.body;
@@ -473,6 +485,7 @@ exports.updateUser = async (req, res) => {
     }
 };
 
+
 //delet user by admin and himself
 exports.deleteUser = async (req, res) => {
     try {
@@ -511,10 +524,7 @@ exports.deleteUser = async (req, res) => {
 };
 
 
-
-
-
-//the user send your feedback
+//the user send your feadback
 exports.submitFeedback = async (req, res) => {
     const { email, feedback } = req.body;
 
@@ -539,6 +549,7 @@ exports.submitFeedback = async (req, res) => {
     }
 };
 
+// read all feadback
 exports.getAllFeedback = async (req, res) => {
     try {
         const users = await User.find({ feedback: { $exists: true, $ne: null } });
@@ -555,7 +566,7 @@ exports.getAllFeedback = async (req, res) => {
     }
 };
 
-// Get feedback by user ID
+// Get feadback by user ID
 exports.getFeedbackById = async (req, res) => {
     const { userId } = req.params;
 
