@@ -21,6 +21,10 @@ router.get('/:lectureId/tasks', lecturesController.getTasksByLectureId);
 //get Lecture WithTasks AndUsers
 router.get('/:lectureId', authMiddleware, lecturesController.getLectureWithTasksAndUsers);
 
+//update and delet task
+router.put('/:lectureId/tasks/:taskId', authMiddleware, lecturesController.editTask);
+router.delete('/:lectureId/tasks/:taskId', authMiddleware, lecturesController.deleteTask);
+
 
 // Submit task
 router.post('/:lectureId/tasks/:taskId/submit', authMiddleware, lecturesController.submitTask);

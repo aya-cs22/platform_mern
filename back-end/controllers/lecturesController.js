@@ -204,6 +204,70 @@ exports.createTask = async (req, res) => {
 };
 
 
+// edit task by taskId
+exports.editTask = async (req, res) => {
+  try {
+    const { lectureId, taskId } = req.params;
+    const { taskLink, description_task, start_date, end_date } = req.body;
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const lecture = await Lectures.findById(lectureId);
+    if (!lecture) {
+      return res.status(404).json({ message: 'Lecture not found' });
+    }
+
+    const task = lecture.tasks.id(taskId);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    task.taskLink = taskLink || task.taskLink;
+    task.description_task = description_task || task.description_task;
+    task.start_date = start_date || task.start_date;
+    task.end_date = end_date || task.end_date;
+
+    await lecture.save();
+    res.status(200).json({ message: 'Task updated successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+
+// delet task by taskId
+exports.deleteTask = async (req, res) => {
+  try {
+    const { lectureId, taskId } = req.params;
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const lecture = await Lectures.findById(lectureId);
+    if (!lecture) {
+      return res.status(404).json({ message: 'Lecture not found' });
+    }
+
+    const taskIndex = lecture.tasks.findIndex(task => task._id.toString() === taskId);
+    if (taskIndex === -1) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    lecture.tasks.splice(taskIndex, 1);
+
+    await lecture.save();
+
+    res.status(200).json({ message: 'Task deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // Get all tasks by lecture id
 exports.getTasksByLectureId = async (req, res) => {
   try {

@@ -35,12 +35,12 @@ const lectureRoutes = require('./routes/lectureRoutes.js');
 const quizeRoutes = require('./routes/quizeRoutes.js');
 const JoinRequestsRoutes = require('./routes/JoinRequestsRoutes.js')
 const userGroupsRoutes = require('./routes/userGroupsRoutes.js')
-app.use('/api/users', userRoutes);  
+app.use('/api/users', userRoutes);
 app.use('/api/groups', groupsRoutes);
 app.use('/api/lectures', lectureRoutes);
 app.use('/api/quize', quizeRoutes);
-app.use('/api/JoinRequests',JoinRequestsRoutes);
-app.use('/api/userGroups',userGroupsRoutes);
+app.use('/api/JoinRequests', JoinRequestsRoutes);
+app.use('/api/userGroups', userGroupsRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -53,6 +53,7 @@ setInterval(() => {
     userController.checkVerificationTimeout();
 }, 60 * 60 * 1000);
 
+// require('./tasks/scheduler.js')
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
     console.log(`Listening on port ${PORT}`);
