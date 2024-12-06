@@ -88,34 +88,57 @@ exports.attendLecture = async (req, res) => {
 };
 
 
+// Get Attendees for a Lecture
+exports.getLectureAttendees = async (req, res) => {
+  try {
+    const { lectureId } = req.params;  // الحصول على lectureId من الـparams
+
+    // البحث عن المحاضرة باستخدام الـlectureId
+    const lecture = await Lectures.findById(lectureId).populate('attendees.userId', 'name email');  // نستخدم populate لملء بيانات المستخدم
+
+    // إذا كانت المحاضرة غير موجودة
+    if (!lecture) {
+      return res.status(404).json({ error: 'Lecture not found.' });
+    }
+
+    // إذا لم يكن هناك أي حضور للمحاضرة
+    if (lecture.attendees.length === 0) {
+      return res.status(200).json({ message: 'No attendees for this lecture.' });
+    }
+
+    // إرجاع الحضور مع بيانات المستخدم
+    res.status(200).json({ attendees: lecture.attendees });
+  } catch (error) {
+    console.error('Error fetching lecture attendees:', error);
+    res.status(500).json({ error: 'An error occurred while fetching lecture attendees.' });
+  }
+};
+
+
+
+
 
 exports.getLectureAttendees = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Access denied. Only admins can view attendees.' });
-    }
+    const { lectureId } = req.params;
 
-    const { lectureId } = req.body;
-    if (!lectureId) {
-      return res.status(400).json({ error: 'Lecture ID is required.' });
-    }
-
-    const lecture = await Lectures.findById(lectureId)
-      .populate('attendees', 'name email');
+    const lecture = await Lectures.findById(lectureId).populate('attendees.userId', 'name email');
 
     if (!lecture) {
       return res.status(404).json({ error: 'Lecture not found.' });
     }
 
-    return res.status(200).json({
-      message: 'Lecture attendees retrieved successfully.',
-      attendees: lecture.attendees
-    });
+    if (lecture.attendees.length === 0) {
+      return res.status(200).json({ message: 'No attendees for this lecture.' });
+    }
+
+    res.status(200).json({ attendees: lecture.attendees });
   } catch (error) {
-    console.error('Error retrieving lecture attendees:', error);
-    return res.status(500).json({ error: 'An error occurred while retrieving attendees.' });
+    console.error('Error fetching lecture attendees:', error);
+    res.status(500).json({ error: 'An error occurred while fetching lecture attendees.' });
   }
 };
+
 
 
 // get all lecture 

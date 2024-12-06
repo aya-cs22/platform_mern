@@ -24,6 +24,8 @@ router.get('/:lectureId', authMiddleware, lecturesController.getLectureWithTasks
 //update and delet task
 router.put('/:lectureId/tasks/:taskId', authMiddleware, lecturesController.editTask);
 router.delete('/:lectureId/tasks/:taskId', authMiddleware, lecturesController.deleteTask);
+// Get Attendees for a Lecture
+router.get('/:lectureId/attendees', lecturesController.getLectureAttendees);
 
 // get lecture by groupId only(admi, user, active)
 router.get('/group/:groupId/lectures', authMiddleware, lecturesController.getLecturesForGroup);
