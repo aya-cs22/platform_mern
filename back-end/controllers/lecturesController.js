@@ -328,8 +328,15 @@ exports.submitTask = async (req, res) => {
       submittedOnTime: true,
     });
 
-    if (!lecture.submittedBy.includes(userId)) {
-      lecture.submittedBy.push(userId);
+    const alreadySubmitted = lecture.submittedBy.some(
+      (submission) => submission.userId.toString() === userId
+    );
+
+    if (!alreadySubmitted) {
+      lecture.submittedBy.push({
+        userId,
+        submittedAt: Date.now(),
+      });
     }
 
     await lecture.save();
@@ -351,7 +358,9 @@ exports.submitTask = async (req, res) => {
 
     user.tasks.push(taskSubmission);
     await user.save();
-    const users = await User.find({ '_id': { $in: lecture.submittedBy } });
+
+    const users = await User.find({ '_id': { $in: lecture.submittedBy.map(sub => sub.userId) } });
+
     res.status(200).json({
       message: 'Task submitted successfully',
       task,

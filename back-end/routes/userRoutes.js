@@ -24,4 +24,7 @@ router.get('/:id', authMiddleware, userController.getUserByid);
 router.put('/:id?', authMiddleware, userController.updateUser);
 router.delete('/:id?', authMiddleware, userController.deleteUser);
 
+
+// send message on whatsapp
+
 module.exports = router; 

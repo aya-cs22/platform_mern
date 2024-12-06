@@ -35,11 +35,19 @@ const lecturesSchema = new mongoose.Schema({
     required: true
   },
   tasks: [taskSchema],
-  submittedBy: {
-    type: [mongoose.Schema.Types.ObjectId],
-    ref: 'Users',
-    default: []
-  },
+  submittedBy: [
+    {
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+      },
+      submittedAt: {
+        type: Date,
+        default: Date.now
+      }
+    }
+  ],
   title: {
     type: String,
     required: true
