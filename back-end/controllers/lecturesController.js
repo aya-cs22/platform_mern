@@ -495,3 +495,53 @@ exports.getLecturesForGroup = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+// get all user submit task
+exports.getUsersWhoSubmittedTask = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+
+    const lecture = await Lectures.findOne({ 'tasks._id': taskId }).populate('tasks.submissions.userId');
+
+    if (!lecture) {
+      return res.status(404).json({ message: 'Lecture or task not found' });
+    }
+
+    const task = lecture.tasks.find(task => task._id.toString() === taskId);
+
+    const usersWhoSubmitted = task.submissions.map(submission => submission.userId);
+
+    res.status(200).json({ users: usersWhoSubmitted });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+
+// Get task by taskid
+exports.getTaskById = async (req, res) => {
+  try {
+    const { lectureId, taskId } = req.params;
+
+    const lecture = await Lectures.findById(lectureId);
+
+    if (!lecture) {
+      return res.status(404).json({ message: 'Lecture not found' });
+    }
+
+    const task = lecture.tasks.id(taskId);
+
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    res.status(200).json({ task });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+
+

@@ -5,7 +5,7 @@ const taskSchema = new mongoose.Schema({
   start_date: Date,
   end_date: Date,
 
-  submissions: [ 
+  submissions: [
     {
       userId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -40,21 +40,21 @@ const lecturesSchema = new mongoose.Schema({
     ref: 'Users',
     default: []
   },
-  title:{
+  title: {
     type: String,
     required: true
   },
   description: {
-    type: String, 
+    type: String,
   },
-  article:{
+  article: {
     type: String
   },
-  resources:{
-    type:[String],
+  resources: {
+    type: [String],
     required: true
   },
-  qr_code:{
+  qr_code: {
     type: String,
     // required: true
   },
@@ -70,13 +70,13 @@ const lecturesSchema = new mongoose.Schema({
   created_at: {
     type: Date,
     default: Date.now,
-    },
-    updated_at: {
-      type: Date,
-      default: Date.now,
-    },
+  },
+  updated_at: {
+    type: Date,
+    default: Date.now,
+  },
 });
-lecturesSchema.pre('save', async function(next){
+lecturesSchema.pre('save', async function (next) {
   this.updated_at = Date.now();
   next()
 });
