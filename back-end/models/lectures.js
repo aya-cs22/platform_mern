@@ -56,13 +56,22 @@ const lecturesSchema = new mongoose.Schema({
   },
   qr_code: {
     type: String,
-    // required: true
+    required: true,
+    unique: true
   },
-  attendees: {
-    type: [mongoose.Schema.Types.ObjectId],
-    ref: 'User',
-    default: []
-  },
+  attendees: [
+    {
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+      },
+      attendedAt: {
+        type: Date,
+        default: Date.now
+      }
+    }
+  ],
   attendanceCount: {
     type: Number,
     default: 0

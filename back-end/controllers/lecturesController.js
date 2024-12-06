@@ -1,49 +1,55 @@
 const Lectures = require('../models/lectures');
-const UserGroup = require('../models/userGroups'); // لتخزين حالة العضوية للمستخدم
-const Groups = require('../models/groups'); // لتخزين بيانات الجروبات
+const UserGroup = require('../models/userGroups');
+const Groups = require('../models/groups');
 const qrCode = require('qrcode');
 const { Admin } = require('mongodb');
 const User = require('../models/users');
-
 exports.creatLectures = async (req, res) => {
   try {
     const { group_id, description, title, article, resources } = req.body;
+
     if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Aess denied' });
+      return res.status(403).json({ message: 'Access denied' });
     }
-    const lectures = new Lectures({
+
+    const generateUniqueCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
+
+    const qr_code = generateUniqueCode();
+
+    const lecture = new Lectures({
       group_id,
       title,
       article,
       description,
       resources,
+      qr_code,
     });
-    await lectures.save();
-    const qrCodeData = {
-      lectureId: lectures._id,
-    };
-    const qr_code = await qrCode.toDataURL(JSON.stringify(qrCodeData)); // Convert data to QR Code
-    lectures.qr_code = qr_code;
-    await lectures.save();
-    res.status(201).json(lectures);
+
+    await lecture.save();
+
+    res.status(201).json({ message: 'Lecture created successfully', lecture });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
-
 exports.attendLecture = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { lectureId } = req.body;
+    const { lectureId, qr_code } = req.body;
 
-    if (!lectureId) {
-      return res.status(400).json({ error: 'Lecture ID is required.' });
+    if (!lectureId || !qr_code) {
+      return res.status(400).json({ error: 'Lecture ID and code are required.' });
     }
 
     const lecture = await Lectures.findById(lectureId);
+
     if (!lecture) {
       return res.status(404).json({ error: 'Lecture not found.' });
+    }
+
+    if (lecture.qr_code !== qr_code) {
+      return res.status(400).json({ error: 'Invalid code.' });
     }
 
     const user = await User.findById(userId);
@@ -51,30 +57,33 @@ exports.attendLecture = async (req, res) => {
       return res.status(404).json({ error: 'User not found.' });
     }
 
-    const existingAttendance = user.attendance.find(
-      (record) => record.lectureId.toString() === lectureId
-    );
+    const existingAttendance = lecture.attendees.find(att => att.userId.toString() === userId);
 
     if (existingAttendance) {
       return res.status(400).json({ error: 'You have already registered for this lecture.' });
     }
 
+    lecture.attendees.push({
+      userId: userId,
+      attendedAt: new Date()
+    });
+
+    lecture.attendanceCount += 1;
+
+    await lecture.save();
+
     user.attendance.push({
-      lectureId,
+      lectureId: lectureId,
       attended: true,
       attendedAt: new Date()
     });
 
-    lecture.attendees.push(userId);
-    lecture.attendanceCount += 1;
-
     await user.save();
-    await lecture.save();
 
-    return res.status(200).json({ message: 'Successfully attended the lecture.' });
+    res.status(200).json({ message: 'Successfully attended the lecture.' });
   } catch (error) {
     console.error('Error in attendLecture:', error);
-    return res.status(500).json({ error: 'An error occurred while attending the lecture.' });
+    res.status(500).json({ error: 'An error occurred while attending the lecture.' });
   }
 };
 
@@ -545,3 +554,33 @@ exports.getTaskById = async (req, res) => {
 
 
 
+// Get all tasks submitted by a specific user
+exports.getTasksSubmittedByUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const lectures = await Lectures.find({ 'tasks.submissions.userId': userId });
+
+    if (!lectures || lectures.length === 0) {
+      return res.status(404).json({ message: 'No tasks found for this user' });
+    }
+
+    const tasksSubmittedByUser = lectures.flatMap(lecture =>
+      lecture.tasks.filter(task =>
+        task.submissions.some(submission => submission.userId.toString() === userId)
+      )
+    );
+
+    res.status(200).json({
+      userId,
+      tasks: tasksSubmittedByUser.map(task => ({
+        taskId: task._id,
+        description: task.description_task,
+        submissions: task.submissions.filter(submission => submission.userId.toString() === userId)
+      }))
+    });
+  } catch (error) {
+    console.error('Error in getTasksSubmittedByUser:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};

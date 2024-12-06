@@ -35,6 +35,7 @@ router.post('/:lectureId/tasks/:taskId/submit', authMiddleware, lecturesControll
 router.put('/evaluate/:lectureId/:taskId', lecturesController.evaluateTask);
 router.get('/:lectureId/tasks/:taskId', authMiddleware, lecturesController.getTaskById);
 router.get('/tasks/:taskId/submissions', lecturesController.getUsersWhoSubmittedTask);
+router.get('/tasks/submitted/:userId', lecturesController.getTasksSubmittedByUser);
 
 
 module.exports = router;
