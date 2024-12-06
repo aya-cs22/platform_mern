@@ -25,10 +25,11 @@ router.get('/:lectureId', authMiddleware, lecturesController.getLectureWithTasks
 router.put('/:lectureId/tasks/:taskId', authMiddleware, lecturesController.editTask);
 router.delete('/:lectureId/tasks/:taskId', authMiddleware, lecturesController.deleteTask);
 
+// get lecture by groupId only(admi, user, active)
+router.get('/group/:groupId/lectures', authMiddleware, lecturesController.getLecturesForGroup);
 
 // Submit task
 router.post('/:lectureId/tasks/:taskId/submit', authMiddleware, lecturesController.submitTask);
-
 
 // score for task
 router.put('/evaluate/:lectureId/:taskId', lecturesController.evaluateTask);

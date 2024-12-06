@@ -1,4 +1,6 @@
 const Lectures = require('../models/lectures');
+const UserGroup = require('../models/userGroups'); // لتخزين حالة العضوية للمستخدم
+const Groups = require('../models/groups'); // لتخزين بيانات الجروبات
 const qrCode = require('qrcode');
 const { Admin } = require('mongodb');
 const User = require('../models/users');
@@ -449,5 +451,47 @@ exports.getLectureWithTasksAndUsers = async (req, res) => {
   } catch (error) {
     console.error('Error fetching lecture data:', error);
     res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+
+
+exports.getLecturesForGroup = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const groupId = req.params.groupId;
+
+    console.log('User ID:', userId);
+    console.log('Group ID:', groupId);
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.role === 'admin') {
+      const lectures = await Lectures.find({ group_id: groupId });
+      console.log('Lectures for admin:', lectures);
+      return res.status(200).json({
+        message: 'Lectures for group retrieved successfully',
+        lectures
+      });
+    }
+
+    const userGroup = await UserGroup.findOne({ user_id: userId, group_id: groupId, status: 'active' });
+    if (!userGroup) {
+      return res.status(403).json({ message: 'You are not an active member of this group' });
+    }
+
+    const lectures = await Lectures.find({ group_id: groupId });
+    console.log('Lectures for active member:', lectures);
+    return res.status(200).json({
+      message: 'Lectures for group retrieved successfully',
+      lectures
+    });
+
+  } catch (error) {
+    console.error('Error fetching lectures:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

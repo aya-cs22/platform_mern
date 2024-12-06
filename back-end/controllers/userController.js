@@ -526,10 +526,10 @@ exports.deleteUser = async (req, res) => {
 
 //the user send your feadback
 exports.submitFeedback = async (req, res) => {
-    const { email, feedback } = req.body;
+    const { name, email, feedback } = req.body;
 
-    if (!email || !feedback) {
-        return res.status(400).json({ message: 'Email and feedback are required' });
+    if (!name || !email || !feedback) {
+        return res.status(400).json({ message: 'Name, Email, and Feedback are required' });
     }
 
     try {
@@ -539,7 +539,7 @@ exports.submitFeedback = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        user.feedback = feedback;
+        user.feedback.push({ name, feedback });
         await user.save();
 
         res.status(200).json({ message: 'Feedback submitted successfully' });
@@ -549,15 +549,23 @@ exports.submitFeedback = async (req, res) => {
     }
 };
 
+
+
 // read all feadback
 exports.getAllFeedback = async (req, res) => {
     try {
-        const users = await User.find({ feedback: { $exists: true, $ne: null } });
+        const users = await User.find({ feedback: { $exists: true, $ne: [] } });
         if (users.length === 0) {
             return res.status(404).json({ message: 'No feedback found' });
         }
 
-        const feedbacks = users.map(user => ({ email: user.email, feedback: user.feedback }));
+        const feedbacks = users.map(user => ({
+            email: user.email,
+            feedbacks: user.feedback.map(item => ({
+                name: item.name,
+                feedback: item.feedback
+            }))
+        }));
 
         res.status(200).json({ feedbacks });
     } catch (error) {
@@ -565,6 +573,8 @@ exports.getAllFeedback = async (req, res) => {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
+
+
 
 // Get feadback by user ID
 exports.getFeedbackById = async (req, res) => {
@@ -577,11 +587,16 @@ exports.getFeedbackById = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        if (!user.feedback) {
+        if (!user.feedback || user.feedback.length === 0) {
             return res.status(404).json({ message: 'No feedback available for this user' });
         }
 
-        res.status(200).json({ email: user.email, feedback: user.feedback });
+        const feedbacks = user.feedback.map(item => ({
+            name: item.name,
+            feedback: item.feedback
+        }));
+
+        res.status(200).json({ email: user.email, feedbacks });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error', error: error.message });

@@ -79,9 +79,6 @@ exports.leaveGroup = async (req, res) => {
 
 
 
-
-
-
 exports.getGroupMembers = async (req, res) => {
     try {
         if (req.user.role !== 'admin') {

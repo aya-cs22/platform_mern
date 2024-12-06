@@ -11,8 +11,8 @@ router.post('/reset-password', userController.resetPassword);
 
 //feedback
 router.post('/submit-feedback', authMiddleware, userController.submitFeedback);
-router.get('/get-all-feedback', authMiddleware, userController.getAllFeedback);
-router.get('/get-feedback-by-id/:userId', authMiddleware, userController.getFeedbackById);
+router.get('/get-all-feedback', userController.getAllFeedback);
+router.get('/get-feedback-by-id/:userId', userController.getFeedbackById);
 
 
 

@@ -13,7 +13,7 @@ const JoinRequestsSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'approved', 'rejected'],
+    enum: ['pending', 'approved', 'rejected', 'expired'],
     default: 'pending',
   },
   startDate: {

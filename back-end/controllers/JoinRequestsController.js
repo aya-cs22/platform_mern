@@ -120,6 +120,7 @@ exports.getAllJoinRequests = async (req, res) => {
 
 
 // Approve join request
+
 exports.approveJoinRequest = async (req, res) => {
     try {
         if (req.user.role !== 'admin') {

@@ -9,7 +9,7 @@ const dbConnection = require('./config/db');
 const userController = require('./controllers/userController');
 const cron = require('node-cron');
 const Groups = require('./models/groups.js');
-const userGroups = require('./models/userGroups');  // تأكد من المسار الصحيح للملف
+const userGroups = require('./models/userGroups');
 
 // Connect with DB
 dbConnection();
@@ -52,8 +52,8 @@ app.use((err, req, res, next) => {
 setInterval(() => {
     userController.checkVerificationTimeout();
 }, 60 * 60 * 1000);
-
 // require('./tasks/scheduler.js')
+
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
     console.log(`Listening on port ${PORT}`);
