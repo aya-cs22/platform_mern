@@ -11,4 +11,6 @@ router.post('/reject-Join-request', authMiddleware, JoinRequestsController.rejec
 router.delete('/delet-join-request', authMiddleware, JoinRequestsController.deleteJoinRequest);
 router.put('/update-join-requestStatus', authMiddleware, JoinRequestsController.updateJoinRequestStatus);
 
+router.put('/:groupId/members/status', authMiddleware, JoinRequestsController.updateAllMembersStatus);
+
 module.exports = router;

@@ -424,3 +424,129 @@ exports.updateJoinRequestStatus = async (req, res) => {
         return res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
+
+
+// update all member in group
+exports.updateAllMembersStatus = async (req, res) => {
+    const { status, startDate, endDate } = req.body;
+    const { groupId } = req.params;
+
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Access denied' });
+        }
+
+        if (!['pending', 'approved', 'rejected'].includes(status)) {
+            return res.status(400).json({ message: 'Invalid status' });
+        }
+
+        const group = await Groups.findById(groupId);
+        if (!group) {
+            return res.status(404).json({ message: 'Group not found' });
+        }
+
+        const joinRequests = await JoinRequests.find({ group_id: groupId });
+        if (!joinRequests.length) {
+            return res.status(404).json({ message: 'No join requests found for this group' });
+        }
+
+        for (const joinRequest of joinRequests) {
+            const userId = joinRequest.user_id;
+
+            if (joinRequest.status === 'pending') {
+                continue;
+            }
+
+            if (startDate || endDate) {
+                const momentStartDate = moment(startDate, 'YYYY-MM-DD', true);
+                const momentEndDate = moment(endDate, 'YYYY-MM-DD', true);
+
+                if (!momentStartDate.isValid() || (endDate && !momentEndDate.isValid())) {
+                    return res.status(400).json({ message: 'Invalid start or end date' });
+                }
+
+                if (endDate && momentEndDate.isBefore(momentStartDate)) {
+                    return res.status(400).json({ message: 'End date must be after start date' });
+                }
+
+                joinRequest.startDate = momentStartDate.toDate();
+                joinRequest.endDate = endDate ? momentEndDate.toDate() : null;
+            }
+
+            joinRequest.status = status;
+            joinRequest.updated_at = Date.now();
+            await joinRequest.save();
+
+            const userObjectId = new mongoose.Types.ObjectId(userId);
+
+            if (status === 'approved') {
+                if (joinRequest.status !== 'pending') {
+                    const memberExists = group.members.some(member =>
+                        member.user_id.toString() === userObjectId.toString()
+                    );
+
+                    if (!memberExists) {
+                        group.members.push({ user_id: userObjectId });
+                        group.updated_at = Date.now();
+                        await group.save();
+                    }
+
+                    let userGroupRecord = await userGroup.findOne({ user_id: userId, group_id: groupId });
+                    if (!userGroupRecord) {
+                        userGroupRecord = new userGroup({
+                            user_id: userId,
+                            group_id: groupId,
+                            status: 'active',
+                            startDate: joinRequest.startDate,
+                            endDate: joinRequest.endDate,
+                        });
+                        await userGroupRecord.save();
+
+                        const user = await User.findById(userId);
+                        if (user && !user.groupId.some(groupItem => groupItem.group_id.toString() === groupId.toString())) {
+                            user.groupId.push({ group_id: groupId });
+                            await user.save();
+                        }
+                    } else if (userGroupRecord.status !== 'active') {
+                        userGroupRecord.status = 'active';
+                        await userGroupRecord.save();
+
+                        const user = await User.findById(userId);
+                        if (user && !user.groupId.some(groupItem => groupItem.group_id.toString() === groupId.toString())) {
+                            user.groupId.push({ group_id: groupId });
+                            await user.save();
+                        }
+                    }
+                }
+            } else if (status === 'rejected') {
+                group.members = group.members.filter(member =>
+                    member.user_id && !member.user_id.equals(userObjectId)
+                );
+
+                group.updated_at = Date.now();
+                await group.save();
+
+                const userGroupRecord = await userGroup.findOne({ user_id: userId, group_id: groupId });
+                if (userGroupRecord) {
+                    userGroupRecord.status = 'inactive';
+                    await userGroupRecord.save();
+
+                    const user = await User.findById(userId);
+                    if (user) {
+                        user.groupId = user.groupId.filter(groupItem => groupItem.group_id.toString() !== groupId.toString());
+                        await user.save();
+                    }
+                }
+            }
+        }
+
+        return res.status(200).json({
+            message: 'Status and membership updated for all members successfully',
+        });
+    } catch (error) {
+        console.error('Error updating join requests status for group:', error);
+        return res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+

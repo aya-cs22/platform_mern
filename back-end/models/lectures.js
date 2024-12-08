@@ -84,6 +84,10 @@ const lecturesSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  mediaLinks: {
+    type: [String],
+    required: false,
+  },
   created_at: {
     type: Date,
     default: Date.now,

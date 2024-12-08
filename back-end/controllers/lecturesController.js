@@ -4,16 +4,48 @@ const Groups = require('../models/groups');
 const qrCode = require('qrcode');
 const { Admin } = require('mongodb');
 const User = require('../models/users');
-exports.creatLectures = async (req, res) => {
+const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
+
+require('dotenv').config();
+
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+
+//upload in cloudinary
+exports.uploadMedia = async (req, res) => {
   try {
-    const { group_id, description, title, article, resources } = req.body;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    const uploadResponse = await cloudinary.uploader.upload(file.path);
+
+    res.status(200).json({ message: 'File uploaded successfully', url: uploadResponse.secure_url });
+  } catch (error) {
+    console.error('Error uploading media:', error);
+    res.status(500).json({ message: 'Error uploading media', error });
+  }
+};
+
+
+// Creat Lecture
+exports.createLectures = async (req, res) => {
+  try {
+    const { group_id, description, title, article, resources, mediaLinks } = req.body;
 
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Access denied' });
     }
 
     const generateUniqueCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
-
     const qr_code = generateUniqueCode();
 
     const lecture = new Lectures({
@@ -23,16 +55,17 @@ exports.creatLectures = async (req, res) => {
       description,
       resources,
       qr_code,
+      mediaLinks,
     });
-
     await lecture.save();
-
     res.status(201).json({ message: 'Lecture created successfully', lecture });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+
 exports.attendLecture = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -41,7 +74,6 @@ exports.attendLecture = async (req, res) => {
     if (!lectureId || !qr_code) {
       return res.status(400).json({ error: 'Lecture ID and code are required.' });
     }
-
     const lecture = await Lectures.findById(lectureId);
 
     if (!lecture) {
@@ -56,30 +88,22 @@ exports.attendLecture = async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found.' });
     }
-
     const existingAttendance = lecture.attendees.find(att => att.userId.toString() === userId);
-
     if (existingAttendance) {
       return res.status(400).json({ error: 'You have already registered for this lecture.' });
     }
-
     lecture.attendees.push({
       userId: userId,
       attendedAt: new Date()
     });
-
     lecture.attendanceCount += 1;
-
     await lecture.save();
-
     user.attendance.push({
       lectureId: lectureId,
       attended: true,
       attendedAt: new Date()
     });
-
     await user.save();
-
     res.status(200).json({ message: 'Successfully attended the lecture.' });
   } catch (error) {
     console.error('Error in attendLecture:', error);
@@ -91,31 +115,23 @@ exports.attendLecture = async (req, res) => {
 // Get Attendees for a Lecture
 exports.getLectureAttendees = async (req, res) => {
   try {
-    const { lectureId } = req.params;  // الحصول على lectureId من الـparams
+    const { lectureId } = req.params;
+    const lecture = await Lectures.findById(lectureId).populate('attendees.userId', 'name email');
 
-    // البحث عن المحاضرة باستخدام الـlectureId
-    const lecture = await Lectures.findById(lectureId).populate('attendees.userId', 'name email');  // نستخدم populate لملء بيانات المستخدم
-
-    // إذا كانت المحاضرة غير موجودة
     if (!lecture) {
       return res.status(404).json({ error: 'Lecture not found.' });
     }
 
-    // إذا لم يكن هناك أي حضور للمحاضرة
     if (lecture.attendees.length === 0) {
       return res.status(200).json({ message: 'No attendees for this lecture.' });
     }
 
-    // إرجاع الحضور مع بيانات المستخدم
     res.status(200).json({ attendees: lecture.attendees });
   } catch (error) {
     console.error('Error fetching lecture attendees:', error);
     res.status(500).json({ error: 'An error occurred while fetching lecture attendees.' });
   }
 };
-
-
-
 
 
 exports.getLectureAttendees = async (req, res) => {
@@ -169,27 +185,30 @@ exports.getLecturesById = async (req, res) => {
 exports.updateLecturesById = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, article, resources, qr_code } = req.body;
+    const { title, description, article, resources, mediaLinks, qr_code } = req.body;
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Access denied' });
     }
+
     const updateLecturesData = {
       title,
       description,
       article,
       resources,
+      mediaLinks,
       qr_code,
       updated_at: Date.now(),
-    }
+    };
 
     const updateLecture = await Lectures.findByIdAndUpdate(id, updateLecturesData, { new: true, runValidators: true });
     if (!updateLecture) {
       return res.status(400).json({ message: 'Lectures not found' });
     }
+
     res.status(200).json(updateLecture);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'server error' });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
