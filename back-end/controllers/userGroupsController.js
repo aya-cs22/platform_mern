@@ -39,19 +39,17 @@ exports.leaveGroup = async (req, res) => {
             return res.status(404).json({ message: 'Group not found' });
         }
 
-        // التحقق من وجود user_id في الأعضاء بدلًا من _id
         const userInGroup = group.members.some(member => {
-            return member.user_id.toString() === userId.toString(); // تعديل هنا ليتحقق من user_id
+            return member.user_id.toString() === userId.toString();
         });
 
         if (!userInGroup) {
             return res.status(404).json({ message: 'User not found in group members' });
         }
 
-        // إزالة العضو من مجموعة members بناءً على user_id
         await Groups.updateOne(
             { _id: groupId },
-            { $pull: { members: { user_id: new mongoose.Types.ObjectId(userId) } } } // تعديل هنا ليتحقق من user_id
+            { $pull: { members: { user_id: new mongoose.Types.ObjectId(userId) } } }
         );
 
         const user = await User.findById(userId);
@@ -59,11 +57,9 @@ exports.leaveGroup = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // إزالة groupId من الـ user
         user.groupId = user.groupId.filter(group => group.group_id.toString() !== groupId.toString());
         await user.save();
 
-        // حذف السجلات المرتبطة
         await JoinRequests.deleteOne({ user_id: userId, group_id: groupId });
         await UserGroup.deleteOne({ user_id: userId, group_id: groupId });
 

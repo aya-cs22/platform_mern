@@ -7,6 +7,7 @@ const helmet = require('helmet');
 dotenv.config({ path: 'config.env' });
 const dbConnection = require('./config/db');
 const userController = require('./controllers/userController');
+const upload = require('./middleware/upload');
 const cron = require('node-cron');
 const Groups = require('./models/groups.js');
 const userGroups = require('./models/userGroups');
@@ -21,21 +22,14 @@ const app = express();
 // middlewares
 app.use(cors());
 app.use(helmet());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '300mb' }));
+app.use(express.urlencoded({ extended: true, limit: '300mb' }));
 
 if (process.env.NODE_ENV === 'development') {
     app.use(morgan('dev'));
     console.log(`mode: ${process.env.NODE_ENV}`);
 }
 
-
-
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 
 // Routes
 const userRoutes = require('./routes/userRoutes');

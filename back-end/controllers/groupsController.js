@@ -1,4 +1,6 @@
 const Groups = require('../models/groups');
+
+// creat group by admin
 exports.creatGroups = async (req, res) => {
     try {
         const { title, type_course, location, start_date, end_date } = req.body;
@@ -45,8 +47,6 @@ exports.getGroupsById = async (req, res) => {
         res.status(500).json({ message: 'server error' });
     }
 };
-
-
 
 
 // update group by id
@@ -119,3 +119,7 @@ exports.deleteGroupsById = async (req, res) => {
         res.status(500).json({ message: 'server error' });
     }
 };
+
+
+
+

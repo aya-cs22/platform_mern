@@ -32,7 +32,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'admin', 'assistant'],
+    enum: ['user', 'admin'],
     default: function () {
       return this.email === process.env.ADMIN_EMAIL ? 'admin' : 'user';
     }

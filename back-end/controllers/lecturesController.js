@@ -28,12 +28,19 @@ exports.uploadMedia = async (req, res) => {
 
     const uploadResponse = await cloudinary.uploader.upload(file.path);
 
-    res.status(200).json({ message: 'File uploaded successfully', url: uploadResponse.secure_url });
+    const public_id = uploadResponse.public_id;
+
+    res.status(200).json({
+      message: 'File uploaded successfully',
+      url: uploadResponse.secure_url,
+      public_id: public_id
+    });
   } catch (error) {
     console.error('Error uploading media:', error);
     res.status(500).json({ message: 'Error uploading media', error });
   }
 };
+
 
 
 // Creat Lecture

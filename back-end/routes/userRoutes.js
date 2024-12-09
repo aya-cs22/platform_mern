@@ -2,17 +2,19 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 const authMiddleware = require('../middleware/authenticate')
+
+//authentication
 router.post('/register', userController.register);
 router.post('/verify-Email', userController.verifyEmail);
 router.post('/login', userController.login);
-
 router.post('/forgot-password', userController.forgotPassword);
 router.post('/reset-password', userController.resetPassword);
 
 //feedback
-router.post('/submit-feedback', authMiddleware, userController.submitFeedback);
+router.post('/submit-feedback', userController.submitFeedback);
 router.get('/get-all-feedback', userController.getAllFeedback);
 router.get('/get-feedback-by-id/:userId', userController.getFeedbackById);
+router.put('/feedback/:userId/:feedbackId', userController.updateFeedback);
 
 
 

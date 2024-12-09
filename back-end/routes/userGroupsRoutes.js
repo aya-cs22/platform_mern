@@ -7,6 +7,6 @@ router.post('/leaveGroup', authenticate, userGroupsController.leaveGroup);
 
 router.get('/', authenticate, userGroupsController.getUserGroups);
 
-router.get('/getActiveGroup', authenticate, userGroupsController.getActiveGroup);
+router.get('/getGroupMembers', authenticate, userGroupsController.getGroupMembers);
 
 module.exports = router;

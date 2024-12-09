@@ -8,7 +8,6 @@ const mongoose = require('mongoose');
 const UserGroup = require('../models/userGroups');
 const JoinRequests = require('../models/JoinRequests');
 const Groups = require('../models/groups');
-const twilio = require('twilio');
 
 
 
@@ -42,6 +41,12 @@ exports.register = async (req, res) => {
         if (!phone_number) {
             return res.status(400).json({ message: 'phone number is required' });
         }
+
+        const phoneRegex = /^[0-9]{11}$/;
+        if (!phoneRegex.test(phone_number)) {
+            return res.status(400).json({ message: 'Phone number must be 11 digits' });
+        }
+
 
         let user = await User.findOne({ email });
         if (user) {
@@ -129,29 +134,29 @@ exports.verifyEmail = async (req, res) => {
 };
 
 // check time virify email
-exports.checkVerificationTimeout = async () => {
-    try {
-        const now = new Date();
-        console.log(`Checking for expired users at: ${now}`);
-        const expiredUsers = await User.find({
-            isVerified: false,
-            verificationCodeExpiry: { $lt: now }
-        });
+// exports.checkVerificationTimeout = async () => {
+//     try {
+//         const now = new Date();
+//         console.log(`Checking for expired users at: ${now}`);
+//         const expiredUsers = await User.find({
+//             isVerified: false,
+//             verificationCodeExpiry: { $lt: now }
+//         });
 
-        console.log(`Found ${expiredUsers.length} expired users.`);
-        if (expiredUsers.length > 0) {
-            await User.deleteMany({
-                isVerified: false,
-                verificationCodeExpiry: { $lt: now }
-            });
-            console.log(`Deleted ${expiredUsers.length} expired users.`);
-        } else {
-            console.log('No expired users to delete.');
-        }
-    } catch (error) {
-        console.error('Error checking verification timeout:', error);
-    }
-};
+//         console.log(`Found ${expiredUsers.length} expired users.`);
+//         if (expiredUsers.length > 0) {
+//             await User.deleteMany({
+//                 isVerified: false,
+//                 verificationCodeExpiry: { $lt: now }
+//             });
+//             console.log(`Deleted ${expiredUsers.length} expired users.`);
+//         } else {
+//             console.log('No expired users to delete.');
+//         }
+//     } catch (error) {
+//         console.error('Error checking verification timeout:', error);
+//     }
+// };
 
 // forget password
 exports.forgotPassword = async (req, res) => {
@@ -303,7 +308,7 @@ exports.addUser = async (req, res) => {
             return res.status(403).json({ message: 'Access denied. Admins only.' });
         }
 
-        const { name, email, password, phone_number, role, groupId } = req.body;
+        const { name, email, password, phone_number, role, groupId, lifetimeAccess, endDate } = req.body;
         if (!name || !email || !password || !phone_number || !role) {
             return res.status(400).json({ message: 'All fields except groupId are required' });
         }
@@ -348,6 +353,8 @@ exports.addUser = async (req, res) => {
                 group_id: groupId,
                 status: 'approved',
                 startDate: new Date(),
+                endDate: endDate || null,
+                lifetimeAccess: lifetimeAccess || false,
             });
 
             await newJoinRequest.save({ session });
@@ -370,8 +377,6 @@ exports.addUser = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
-
-
 
 
 // get user by token
@@ -404,14 +409,14 @@ exports.getUserByid = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        if (req.user.id !== id && !(req.user.role === 'admin' || req.user.role === 'assistant')) {
+        if (req.user.id !== id && !(req.user.role === 'admin')) {
             return res.status(403).json({ message: 'Access denied' });
         }
 
 
         let userResponse;
 
-        if (req.user.role === 'admin' || req.user.role === 'assistant') {
+        if (req.user.role === 'admin') {
             userResponse = { ...user._doc, password: undefined };
         } else if (req.user.id === id) {
             userResponse = { ...user._doc };
@@ -439,8 +444,8 @@ exports.getAllUsers = async (req, res) => {
     }
 };
 
+// update user by admin => admin can update role and groupId, user can edit all data except role and groupId
 
-// update user by admin => update only role and user can edit all data expect role
 exports.updateUser = async (req, res) => {
     try {
         const { name, email, password, role, phone_number } = req.body;
@@ -492,13 +497,13 @@ exports.updateUser = async (req, res) => {
 };
 
 
+
 //delet user by admin and himself
 exports.deleteUser = async (req, res) => {
     try {
         const { id } = req.params;
         const userIdFromToken = req.user.id;
         const userIdToDelete = id || userIdFromToken;
-
         if (req.user.role !== 'admin' && !id) {
             if (userIdFromToken !== userIdToDelete) {
                 return res.status(403).json({ message: 'Access denied' });
@@ -509,8 +514,8 @@ exports.deleteUser = async (req, res) => {
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
-
         const userIdObjectId = new mongoose.Types.ObjectId(userIdToDelete);
+
 
         await Promise.all([
             Groups.updateMany(
@@ -528,6 +533,7 @@ exports.deleteUser = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
+
 
 
 //the user send your feadback
@@ -609,5 +615,34 @@ exports.getFeedbackById = async (req, res) => {
     }
 };
 
+// update feadback by userId and feedbackId
+exports.updateFeedback = async (req, res) => {
+    const { userId, feedbackId } = req.params;
+    const { name, feedback } = req.body;
 
-// send message
+    if (!name || !feedback) {
+        return res.status(400).json({ message: 'Name and Feedback are required' });
+    }
+
+    try {
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        const feedbackIndex = user.feedback.findIndex(item => item._id.toString() === feedbackId);
+
+        if (feedbackIndex === -1) {
+            return res.status(404).json({ message: 'Feedback not found' });
+        }
+
+        user.feedback[feedbackIndex] = { name, feedback };
+
+        await user.save();
+
+        res.status(200).json({ message: 'Feedback updated successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
