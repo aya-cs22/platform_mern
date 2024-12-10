@@ -80,8 +80,6 @@ exports.uploadMediaAndUpdateLecture = async (req, res) => {
   }
 };
 
-
-// Delete Media Link
 exports.deleteMediaLink = async (req, res) => {
   try {
     const { lectureId, public_id } = req.body;
@@ -90,25 +88,13 @@ exports.deleteMediaLink = async (req, res) => {
     if (!lecture) {
       return res.status(404).json({ message: 'Lecture not found' });
     }
-
     const mediaIndex = lecture.mediaLinks.findIndex(media => media.public_id === public_id);
     if (mediaIndex === -1) {
       return res.status(404).json({ message: 'Media link not found' });
     }
-
-    const media = lecture.mediaLinks[mediaIndex];
-    const localFilePath = path.join(__dirname, '../uploads', media.public_id); // تحديد مسار الملف المحلي
-
-    if (fs.existsSync(localFilePath)) {
-      fs.unlinkSync(localFilePath);
-      console.log(`Local file ${localFilePath} deleted successfully.`);
-    }
-
-    await cloudinary.uploader.destroy(public_id);
-    console.log(`Cloudinary file with public_id ${public_id} deleted successfully.`);
-
     lecture.mediaLinks.splice(mediaIndex, 1);
 
+    await cloudinary.uploader.destroy(public_id);
     await lecture.save();
 
     res.status(200).json({ message: 'Media link deleted successfully', lecture });
@@ -117,6 +103,7 @@ exports.deleteMediaLink = async (req, res) => {
     res.status(500).json({ message: 'Error deleting media link', error });
   }
 };
+
 exports.attendLecture = async (req, res) => {
   try {
     const userId = req.user.id;

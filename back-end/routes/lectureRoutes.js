@@ -7,7 +7,7 @@ const upload = require('../middleware/upload');
 
 router.post('/', authMiddleware, lecturesController.createLectures);
 router.get('/', lecturesController.getAllLectures);
-// router.delete('/delete-media-link', lecturesController.deleteMediaLink);
+router.delete('/delete-media-link', lecturesController.deleteMediaLink);
 // Attendance
 router.post('/attend', authMiddleware, lecturesController.attendLecture);
 router.get('/get-lecture-attendees', authMiddleware, lecturesController.getLectureAttendees);
