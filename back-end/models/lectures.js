@@ -67,6 +67,7 @@ const lecturesSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+
   attendees: [
     {
       userId: {
@@ -84,10 +85,18 @@ const lecturesSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  mediaLinks: {
-    type: [String],
-    required: false,
-  },
+  mediaLinks: [
+    {
+      url: {
+        type: String,
+        required: true,
+      },
+      public_id: {
+        type: String,
+        required: true,
+      },
+    }
+  ],
   created_at: {
     type: Date,
     default: Date.now,

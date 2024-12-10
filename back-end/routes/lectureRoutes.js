@@ -7,7 +7,7 @@ const upload = require('../middleware/upload');
 
 router.post('/', authMiddleware, lecturesController.createLectures);
 router.get('/', lecturesController.getAllLectures);
-
+// router.delete('/delete-media-link', lecturesController.deleteMediaLink);
 // Attendance
 router.post('/attend', authMiddleware, lecturesController.attendLecture);
 router.get('/get-lecture-attendees', authMiddleware, lecturesController.getLectureAttendees);
@@ -40,7 +40,7 @@ router.get('/tasks/:taskId/submissions', lecturesController.getUsersWhoSubmitted
 router.get('/tasks/submitted/:userId', lecturesController.getTasksSubmittedByUser);
 
 // cloudinary
-router.post('/uploadMedia', authMiddleware, upload.single('file'), lecturesController.uploadMedia);
+router.post('/uploadMediaAndUpdateLecture', upload.single('file'), lecturesController.uploadMediaAndUpdateLecture);
 
 
 module.exports = router;

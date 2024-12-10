@@ -6,10 +6,10 @@ const { Admin } = require('mongodb');
 const User = require('../models/users');
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
+const path = require('path');
+const fs = require('fs');
 
 require('dotenv').config();
-
-
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -17,36 +17,10 @@ cloudinary.config({
 });
 
 
-//upload in cloudinary
-exports.uploadMedia = async (req, res) => {
-  try {
-    const file = req.file;
-
-    if (!file) {
-      return res.status(400).json({ message: 'No file uploaded' });
-    }
-
-    const uploadResponse = await cloudinary.uploader.upload(file.path);
-
-    const public_id = uploadResponse.public_id;
-
-    res.status(200).json({
-      message: 'File uploaded successfully',
-      url: uploadResponse.secure_url,
-      public_id: public_id
-    });
-  } catch (error) {
-    console.error('Error uploading media:', error);
-    res.status(500).json({ message: 'Error uploading media', error });
-  }
-};
-
-
-
 // Creat Lecture
 exports.createLectures = async (req, res) => {
   try {
-    const { group_id, description, title, article, resources, mediaLinks } = req.body;
+    const { group_id, description, title, article, resources } = req.body;
 
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Access denied' });
@@ -62,7 +36,6 @@ exports.createLectures = async (req, res) => {
       description,
       resources,
       qr_code,
-      mediaLinks,
     });
     await lecture.save();
     res.status(201).json({ message: 'Lecture created successfully', lecture });
@@ -72,7 +45,78 @@ exports.createLectures = async (req, res) => {
   }
 };
 
+// upload Media And Update Lecture
+exports.uploadMediaAndUpdateLecture = async (req, res) => {
+  try {
+    const file = req.file;
+    const { lectureId } = req.body;
 
+    if (!file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+    const uploadResponse = await cloudinary.uploader.upload(file.path);
+    const public_id = uploadResponse.public_id;
+    const url = uploadResponse.secure_url;
+    const lecture = await Lectures.findById(lectureId);
+    if (!lecture) {
+      return res.status(404).json({ message: 'Lecture not found' });
+    }
+    lecture.mediaLinks.push({
+      url,
+      public_id
+    });
+
+    await lecture.save();
+
+    res.status(200).json({
+      message: 'File uploaded and lecture updated successfully',
+      url,
+      public_id,
+      lecture
+    });
+  } catch (error) {
+    console.error('Error uploading media:', error);
+    res.status(500).json({ message: 'Error uploading media', error });
+  }
+};
+
+
+// Delete Media Link
+exports.deleteMediaLink = async (req, res) => {
+  try {
+    const { lectureId, public_id } = req.body;
+
+    const lecture = await Lectures.findById(lectureId);
+    if (!lecture) {
+      return res.status(404).json({ message: 'Lecture not found' });
+    }
+
+    const mediaIndex = lecture.mediaLinks.findIndex(media => media.public_id === public_id);
+    if (mediaIndex === -1) {
+      return res.status(404).json({ message: 'Media link not found' });
+    }
+
+    const media = lecture.mediaLinks[mediaIndex];
+    const localFilePath = path.join(__dirname, '../uploads', media.public_id); // تحديد مسار الملف المحلي
+
+    if (fs.existsSync(localFilePath)) {
+      fs.unlinkSync(localFilePath);
+      console.log(`Local file ${localFilePath} deleted successfully.`);
+    }
+
+    await cloudinary.uploader.destroy(public_id);
+    console.log(`Cloudinary file with public_id ${public_id} deleted successfully.`);
+
+    lecture.mediaLinks.splice(mediaIndex, 1);
+
+    await lecture.save();
+
+    res.status(200).json({ message: 'Media link deleted successfully', lecture });
+  } catch (error) {
+    console.error('Error deleting media link:', error);
+    res.status(500).json({ message: 'Error deleting media link', error });
+  }
+};
 exports.attendLecture = async (req, res) => {
   try {
     const userId = req.user.id;
