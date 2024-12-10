@@ -8,6 +8,7 @@ const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const path = require('path');
 const fs = require('fs');
+const nodemailer = require('nodemailer');
 
 require('dotenv').config();
 cloudinary.config({
@@ -18,6 +19,15 @@ cloudinary.config({
 
 
 // Creat Lecture
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
 exports.createLectures = async (req, res) => {
   try {
     const { group_id, description, title, article, resources } = req.body;
@@ -38,12 +48,40 @@ exports.createLectures = async (req, res) => {
       qr_code,
     });
     await lecture.save();
+
+    const group = await Groups.findById(group_id);
+    if (!group) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+
+    const usersInGroup = await UserGroup.find({ group_id });
+    const userIds = usersInGroup.map((userGroup) => userGroup.user_id);
+
+    const users = await User.find({ '_id': { $in: userIds } });
+    const emailAddresses = users.map(user => user.email);
+
+    emailAddresses.forEach(async (email) => {
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: `New Lecture Created: ${title}`,
+        text: `Dear User,\n\nA new lecture titled "${title}" has been created in your group. You can now access the lecture and its resources.\n\nBest regards,\nYour Platform`,
+      };
+
+      try {
+        await transporter.sendMail(mailOptions);
+      } catch (error) {
+        console.error(`Failed to send email to ${email}: `, error);
+      }
+    });
+
     res.status(201).json({ message: 'Lecture created successfully', lecture });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 // upload Media And Update Lecture
 exports.uploadMediaAndUpdateLecture = async (req, res) => {

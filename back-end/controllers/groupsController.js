@@ -1,5 +1,11 @@
+const userGroups = require('../models/userGroups');
 const Groups = require('../models/groups');
-
+const JoinRequests = require('../models/JoinRequests');
+const moment = require('moment');
+const { use } = require('../config/mailConfig');
+const mongoose = require('mongoose');
+const User = require('../models/users');
+const Lectures = require('../models/lectures');
 // creat group by admin
 exports.creatGroups = async (req, res) => {
     try {
@@ -34,19 +40,51 @@ exports.getAllGroups = async (req, res) => {
 };
 
 
-// get groups by id
+
+// // get groups by id
+// exports.getGroupsById = async (req, res) => {
+//     try {
+//         const groups = await Groups.findById(req.params.id).populate('type_course');
+//         if (!groups) {
+//             return res.status(404).json({ message: 'groups not found' });
+//         }
+//         return res.status(200).json(groups);
+//     } catch (error) {
+//         console.error('Error  fetching group');
+//         res.status(500).json({ message: 'server error' });
+//     }
+// };
+
+
 exports.getGroupsById = async (req, res) => {
     try {
-        const groups = await Groups.findById(req.params.id).populate('type_course');
-        if (!groups) {
-            return res.status(404).json({ message: 'groups not found' });
+        const group = await Groups.findById(req.params.id);
+
+        if (!group) {
+            return res.status(404).json({ message: 'Group not found' });
         }
-        return res.status(200).json(groups);
+
+        console.log('User role:', req.user.role);
+        console.log('User ID:', req.user.id);
+
+        if (req.user.role === 'admin') {
+            return res.status(200).json(group);
+        }
+        const joinRequest = await JoinRequests.findOne({
+            user_id: req.user.id,
+            group_id: group._id,
+        });
+        console.log('Join Request:', joinRequest);
+        if (!joinRequest || joinRequest.status !== 'approved') {
+            return res.status(403).json({ message: 'Access denied: You must be approved or an admin to access this group' });
+        }
+        return res.status(200).json(group);
     } catch (error) {
-        console.error('Error  fetching group');
-        res.status(500).json({ message: 'server error' });
+        console.error('Error fetching group:', error);
+        res.status(500).json({ message: 'Server error' });
     }
 };
+
 
 
 // update group by id
@@ -60,11 +98,11 @@ exports.updateGroupsById = async (req, res) => {
         }
 
         const updateGroupsData = {
-            type_course,
-            location,
-            title,
-            start_date,
-            end_date
+            title: title,
+            type_course: type_course,
+            location: location || "",
+            start_date: start_date,
+            end_date: end_date
         };
 
         const updatedGroup = await Groups.findByIdAndUpdate(id, updateGroupsData, { new: true, runValidators: true });
@@ -106,20 +144,27 @@ exports.sendGroupId = async (req, res) => {
 exports.deleteGroupsById = async (req, res) => {
     try {
         const { id } = req.params;
+
         if (req.user.role !== 'admin') {
             return res.status(403).json({ message: 'Access denied' });
         }
+        await JoinRequests.deleteMany({ group_id: id });
+
+        await Lectures.deleteMany({ group_id: id });
+        await userGroups.deleteMany({ group_id: id });
+        await User.updateMany(
+            { 'groupId.group_id': id },  
+            { $pull: { groupId: { group_id: id } } } 
+        );
+
         const deleteGroups = await Groups.findByIdAndDelete(id);
         if (!deleteGroups) {
-            return res.status(404).json({ message: 'course not found' });
+            return res.status(404).json({ message: 'Group not found' });
         }
-        res.status(200).json({ message: 'groups delet successful' })
+
+        res.status(200).json({ message: 'Group and related data deleted successfully' });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'server error' });
+        res.status(500).json({ message: 'Server error' });
     }
 };
-
-
-
-

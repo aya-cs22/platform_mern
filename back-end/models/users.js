@@ -48,7 +48,7 @@ const userSchema = new mongoose.Schema({
 
   feedback: {
     name: { type: String },
-    type: String
+    feedback: { type: String }
   },
   emailVerificationCode: { // Email verification code, set when a verification code is sent to the user
     type: String,

@@ -535,7 +535,6 @@ exports.deleteUser = async (req, res) => {
 };
 
 
-
 //the user send your feadback
 exports.submitFeedback = async (req, res) => {
     const { name, email, feedback } = req.body;
@@ -551,7 +550,7 @@ exports.submitFeedback = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        user.feedback.push({ name, feedback });
+        user.feedback = { name, feedback };
         await user.save();
 
         res.status(200).json({ message: 'Feedback submitted successfully' });
@@ -566,17 +565,22 @@ exports.submitFeedback = async (req, res) => {
 // read all feadback
 exports.getAllFeedback = async (req, res) => {
     try {
-        const users = await User.find({ feedback: { $exists: true, $ne: [] } });
+        const users = await User.find({ feedback: { $exists: true } });
         if (users.length === 0) {
             return res.status(404).json({ message: 'No feedback found' });
         }
 
+        // const feedbacks = users.map(user => ({
+        //     email: user.email,
+        //     feedbacks: user.feedback.map(item => ({
+        //         name: item.name,
+        //         feedback: item.feedback
+        //     }))
+        // }));
         const feedbacks = users.map(user => ({
             email: user.email,
-            feedbacks: user.feedback.map(item => ({
-                name: item.name,
-                feedback: item.feedback
-            }))
+            name: user.feedback.name,
+            feedback: user.feedback.feedback,
         }));
 
         res.status(200).json({ feedbacks });
@@ -603,9 +607,10 @@ exports.getFeedbackById = async (req, res) => {
             return res.status(404).json({ message: 'No feedback available for this user' });
         }
 
-        const feedbacks = user.feedback.map(item => ({
-            name: item.name,
-            feedback: item.feedback
+        const feedbacks = users.map(user => ({
+            email: user.email,
+            name: user.feedback.name,
+            feedback: user.feedback.feedback,
         }));
 
         res.status(200).json({ email: user.email, feedbacks });
