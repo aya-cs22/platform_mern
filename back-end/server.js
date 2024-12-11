@@ -4,6 +4,9 @@ const morgan = require('morgan');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
+const xssClean = require('xss-clean');
+const rateLimit = require('express-rate-limit');
+
 dotenv.config({ path: 'config.env' });
 const dbConnection = require('./config/db');
 const userController = require('./controllers/userController');
@@ -22,22 +25,28 @@ const app = express();
 // middlewares
 app.use(cors());
 app.use(helmet());
+app.use(xssClean());
 app.use(express.json({ limit: '300mb' }));
 app.use(express.urlencoded({ extended: true, limit: '300mb' }));
 
+// Rate Limiting
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 25
+});
+app.use(limiter);
 if (process.env.NODE_ENV === 'development') {
     app.use(morgan('dev'));
     console.log(`mode: ${process.env.NODE_ENV}`);
 }
-
 
 // Routes
 const userRoutes = require('./routes/userRoutes');
 const groupsRoutes = require('./routes/groupsRoutes');
 const lectureRoutes = require('./routes/lectureRoutes.js');
 const quizeRoutes = require('./routes/quizeRoutes.js');
-const JoinRequestsRoutes = require('./routes/JoinRequestsRoutes.js')
-const userGroupsRoutes = require('./routes/userGroupsRoutes.js')
+const JoinRequestsRoutes = require('./routes/JoinRequestsRoutes.js');
+const userGroupsRoutes = require('./routes/userGroupsRoutes.js');
 app.use('/api/users', userRoutes);
 app.use('/api/groups', groupsRoutes);
 app.use('/api/lectures', lectureRoutes);
@@ -51,12 +60,12 @@ app.use((err, req, res, next) => {
     res.status(500).send('Something broke!');
 });
 
-
+// Check for verification timeout every hour
 setInterval(() => {
     userController.checkVerificationTimeout();
 }, 60 * 60 * 1000);
-// require('./tasks/scheduler.js')
 
+// Start the server
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
     console.log(`Listening on port ${PORT}`);
