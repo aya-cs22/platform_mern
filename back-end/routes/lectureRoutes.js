@@ -6,20 +6,20 @@ const authMiddleware = require('../middleware/authenticate');
 const upload = require('../middleware/upload');
 
 router.post('/', authMiddleware, lecturesController.createLectures);
-router.get('/', lecturesController.getAllLectures);
-router.delete('/delete-media-link', lecturesController.deleteMediaLink);
+router.get('/', authMiddleware, lecturesController.getAllLectures);
 // Attendance
 router.post('/attend', authMiddleware, lecturesController.attendLecture);
 router.get('/get-lecture-attendees', authMiddleware, lecturesController.getLectureAttendees);
+router.get('/user/attendance', authMiddleware, lecturesController.getUserAttendance);
 
 // Get lecture by ID
-router.get('/:id', lecturesController.getLecturesById);
+router.get('/:id', authMiddleware, lecturesController.getLecturesById);
 router.put('/:id', authMiddleware, lecturesController.updateLecturesById);
 router.delete('/:id', authMiddleware, lecturesController.deleteLecturesById);
 router.post('/:lectureId/createtasks', authMiddleware, lecturesController.createTask);
-router.get('/:lectureId/tasks', lecturesController.getTasksByLectureId);
+router.get('/:lectureId/tasks', authMiddleware, lecturesController.getTasksByLectureId);
 //get Lecture WithTasks AndUsers
-router.get('/:lectureId', authMiddleware, lecturesController.getLectureWithTasksAndUsers);
+// router.get('/:lectureId', authMiddleware, lecturesController.getLectureWithTasksAndUsers);
 
 //update and delet task
 router.put('/:lectureId/tasks/:taskId', authMiddleware, lecturesController.editTask);
@@ -34,13 +34,14 @@ router.get('/group/:groupId/lectures', authMiddleware, lecturesController.getLec
 router.post('/:lectureId/tasks/:taskId/submit', authMiddleware, lecturesController.submitTask);
 
 // score for task
-router.put('/evaluate/:lectureId/:taskId', lecturesController.evaluateTask);
+router.put('/evaluate/:lectureId/:taskId', authMiddleware, lecturesController.evaluateTask);
 router.get('/:lectureId/tasks/:taskId', authMiddleware, lecturesController.getTaskById);
-router.get('/tasks/:taskId/submissions', lecturesController.getUsersWhoSubmittedTask);
-router.get('/tasks/submitted/:userId', lecturesController.getTasksSubmittedByUser);
+router.get('/tasks/:taskId/submissions', authMiddleware, lecturesController.getUsersWhoSubmittedTask);
+router.get('/tasks/submitted', authMiddleware, lecturesController.getTasksSubmittedByUser);
 
 // cloudinary
-router.post('/uploadMediaAndUpdateLecture', upload.single('file'), lecturesController.uploadMediaAndUpdateLecture);
+// router.post('/uploadMediaAndUpdateLecture', upload.single('file'), lecturesController.uploadMediaAndUpdateLecture);
+// router.delete('/delete-media-link', lecturesController.deleteMediaLink);
 
 
 module.exports = router;

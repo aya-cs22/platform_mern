@@ -6,23 +6,6 @@ const { use } = require('../config/mailConfig');
 const mongoose = require('mongoose');
 const User = require('../models/users');
 
-exports.getUserGroups = async (req, res) => {
-    try {
-        const userId = req.user.id;
-        const userGroups = await UserGroup.find({ user_id: userId, status: 'active' }).populate('group_id');
-
-        if (!userGroups.length) {
-            return res.status(404).json({ message: 'You are not a member of any groups' });
-        }
-
-        res.status(200).json({ message: 'User groups retrieved successfully', userGroups });
-    } catch (error) {
-        console.error('Error fetching user groups:', error);
-        res.status(500).json({ message: 'Server error', error: error.message });
-    }
-};
-
-
 
 
 exports.leaveGroup = async (req, res) => {
@@ -74,7 +57,6 @@ exports.leaveGroup = async (req, res) => {
 
 
 
-
 exports.getGroupMembers = async (req, res) => {
     try {
         if (req.user.role !== 'admin') {
@@ -94,49 +76,6 @@ exports.getGroupMembers = async (req, res) => {
         res.status(200).json({ message: 'Group members retrieved successfully', members: group.members });
     } catch (error) {
         console.error('Error fetching group members:', error);
-        res.status(500).json({ message: 'Server error', error: error.message });
-    }
-};
-
-
-
-exports.getActiveGroup = async (req, res) => {
-    try {
-        const userId = req.user.id;
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        if (user.role === 'admin') {
-            const activeGroups = await UserGroup.find({ status: 'active' }).populate('group_id');
-            return res.status(200).json({
-                message: 'All active groups retrieved successfully',
-                activeGroups
-            });
-        }
-        const userGroup = await UserGroup.findOne({ user_id: userId, status: 'active' });
-        if (!userGroup) {
-            return res.status(404).json({ message: 'User is not an active member of any group' });
-        }
-
-        if (userGroup.endDate && moment(userGroup.endDate).isBefore(moment())) {
-            userGroup.status = 'inactive';
-            await userGroup.save();
-            return res.status(403).json({ message: 'Membership has expired and the status has been updated to inactive' });
-        }
-
-        const groupDetails = await Groups.findById(userGroup.group_id);
-        if (!groupDetails) {
-            return res.status(404).json({ message: 'Group details not found' });
-        }
-
-        res.status(200).json({
-            message: 'Active group details retrieved successfully',
-            groupDetails
-        });
-    } catch (error) {
-        console.error('Error fetching active user group details:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };

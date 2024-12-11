@@ -29,6 +29,16 @@ const quizSchema = new mongoose.Schema({
     ref: 'Lectures',
     required: true
   },
+
+  usersAttempted: [
+    {
+      userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      score: Number,
+      pass: Boolean,
+      attemptedAt: { type: Date, default: Date.now },
+    }
+  ],
+
   createdAt: {
     type: Date,
     default: Date.now

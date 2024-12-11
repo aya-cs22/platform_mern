@@ -1,7 +1,6 @@
 const Quiz = require('../models/quizzes');
 const Lecture = require('../models/lectures');
 const User = require('../models/users');
-const Submission = require('../models/submissions');
 // Create a new quiz
 exports.createQuiz = async (req, res) => {
   try {
@@ -62,18 +61,31 @@ exports.updateQuizById = async (req, res) => {
   }
 };
 
-// Delete a quiz by ID
+// Delete a quiz by ID and remove users attempts
 exports.deleteQuizById = async (req, res) => {
   try {
     if (!req.user || req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Access denied, admin only' });
     }
+
     console.log('User ID:', req.user._id);
+
     const deletedQuiz = await Quiz.findByIdAndDelete(req.params.id);
     if (!deletedQuiz) {
       return res.status(404).json({ message: 'Quiz not found' });
     }
-    res.status(200).json({ message: 'Quiz deleted successfully' });
+
+    await User.updateMany(
+      { 'quizResults.quizId': req.params.id },
+      { $pull: { quizResults: { quizId: req.params.id } } }
+    );
+
+    await Quiz.updateMany(
+      { 'usersAttempted.quizId': req.params.id },
+      { $pull: { usersAttempted: { quizId: req.params.id } } }
+    );
+
+    res.status(200).json({ message: 'Quiz and associated user attempts deleted successfully' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
@@ -107,38 +119,63 @@ exports.submitQuiz = async (req, res) => {
     const passingScore = Math.floor(totalQuestions / 2);
 
     const user = await User.findById(req.user.id);
-    const quizIndex = user.quizScores.findIndex(q => q.quizId.toString() === quizId);
+
+    // تحقق من وجود quizResults
+    if (!user.quizResults) {
+      user.quizResults = [];
+    }
+
+    const quizIndex = user.quizResults.findIndex(q => q.quizId.toString() === quizId);
 
     if (quizIndex !== -1) {
-      user.quizScores[quizIndex].score = score;
-      user.quizScores[quizIndex].totalScore = totalQuestions;
-      user.quizScores[quizIndex].pass = score >= passingScore;
+      user.quizResults[quizIndex].score = score;
+      user.quizResults[quizIndex].totalScore = totalQuestions;
+      user.quizResults[quizIndex].pass = score >= passingScore;
     } else {
-      user.quizScores.push({
+      user.quizResults.push({
         quizId,
         score,
         totalScore: totalQuestions,
-        pass: score >= passingScore
+        pass: score >= passingScore,
       });
     }
 
     await user.save();
 
+    // تحديث usersAttempted في جدول الكويز
+    const userAttempt = {
+      userId: req.user.id,
+      score,
+      pass: score >= passingScore,
+      attemptedAt: new Date(),
+    };
+
+    const quizAttemptIndex = quiz.usersAttempted.findIndex(u => u.userId.toString() === req.user.id);
+
+    if (quizAttemptIndex !== -1) {
+      quiz.usersAttempted[quizAttemptIndex] = userAttempt;
+    } else {
+      quiz.usersAttempted.push(userAttempt);
+    }
+
+    await quiz.save();
+
     if (score < passingScore) {
       return res.status(400).json({
         message: 'You did not pass the quiz. Please try again to unlock the next quiz.',
         score,
-        totalScore: totalQuestions
+        totalScore: totalQuestions,
       });
     }
 
     res.status(200).json({
       message: 'Quiz submitted successfully',
       score,
-      totalScore: totalQuestions
+      totalScore: totalQuestions,
     });
   } catch (error) {
     console.error('Error submitting quiz:', error);
     res.status(500).json({ message: 'Server error while submitting quiz' });
   }
 };
+

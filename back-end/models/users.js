@@ -96,7 +96,14 @@ const userSchema = new mongoose.Schema({
   ],
 
 
-
+  quizResults: [
+    {
+      quizId: { type: mongoose.Schema.Types.ObjectId, ref: 'Quiz' },
+      score: Number,
+      totalScore: Number,
+      pass: Boolean,
+    },
+  ],
 
   created_at: {
     type: Date,
