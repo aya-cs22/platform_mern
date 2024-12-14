@@ -11,7 +11,13 @@ const Lectures = require('../models/lectures');
 
 
 
-
+const generateToken = (user) => {
+    return jwt.sign(
+        { id: user.id, name: user.name, email: user.email },
+        process.env.JWT_SECRET, // تأكد من أنك حاطط قيمة JWT_SECRET في البيئة
+        { expiresIn: '3h' }  // يمكن تعديل وقت التوكن حسب احتياجك
+    );
+};
 
 const EMAIL_VERIFICATION_TIMEOUT = 10 * 60 * 1000; // 10 minutes 
 
@@ -461,9 +467,20 @@ exports.updateUser = async (req, res) => {
             return res.status(403).json({ message: 'Access denied' });
         }
 
+        // تحديث البيانات
         const user = await User.findByIdAndUpdate(userIdFromParams || userIdFromToken, updates, { new: true });
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
+        }
+
+        // إذا تم تحديث الباسورد، هنضيف تسجيل دخول جديد باستخدامه
+        if (password) {
+            const token = generateToken(user); // دالة لتوليد التوكن الجديد
+            return res.status(200).json({
+                message: 'User updated successfully',
+                token: token,  // ارسال التوكن الجديد
+                user: user
+            });
         }
 
         res.status(200).json(user);
@@ -472,7 +489,6 @@ exports.updateUser = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
-
 
 // delete user by admin and himself
 exports.deleteUser = async (req, res) => {
