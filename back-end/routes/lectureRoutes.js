@@ -3,7 +3,6 @@ const router = express.Router();
 const Lectures = require('../models/lectures');
 const lecturesController = require('../controllers/lecturesController.js');
 const authMiddleware = require('../middleware/authenticate');
-const upload = require('../middleware/upload');
 
 router.post('/', authMiddleware, lecturesController.createLectures);
 router.get('/', authMiddleware, lecturesController.getAllLectures);

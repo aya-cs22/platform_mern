@@ -5,16 +5,15 @@ const User = require('../models/users');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const mongoose = require('mongoose');
-const UserGroup = require('../models/userGroups');
-const JoinRequests = require('../models/JoinRequests');
 const Groups = require('../models/groups');
+const Lectures = require('../models/lectures');
 
 
 
 
 
 
-const EMAIL_VERIFICATION_TIMEOUT = 60 * 60 * 1000; // 1 hours
+const EMAIL_VERIFICATION_TIMEOUT = 10 * 60 * 1000; // 10 minutes 
 
 // Function to generate a 6-digit verification code
 const generateVerificationCode = () => {
@@ -26,31 +25,60 @@ exports.register = async (req, res) => {
     try {
         const { name, email, password, phone_number } = req.body;
 
-        if (!password) {
-            return res.status(400).json({ message: 'Password is required' });
+        if (!password || password.length < 10) {
+            return res.status(400).json({ message: 'Password must be at least 10 characters long' });
         }
 
         if (!email) {
-            return res.status(400).json({ message: 'email is required' });
+            return res.status(400).json({ message: 'Email is required' });
         }
 
         if (!name) {
-            return res.status(400).json({ message: 'name is required' });
+            return res.status(400).json({ message: 'Name is required' });
         }
 
         if (!phone_number) {
-            return res.status(400).json({ message: 'phone number is required' });
+            return res.status(400).json({ message: 'Phone number is required' });
         }
 
-        const phoneRegex = /^[0-9]{11}$/;
-        if (!phoneRegex.test(phone_number)) {
-            return res.status(400).json({ message: 'Phone number must be 11 digits' });
-        }
-
-
+        // Check if the user exists
         let user = await User.findOne({ email });
+
         if (user) {
-            return res.status(400).json({ message: 'User already exists' });
+            if (user.isVerified) {
+                return res.status(400).json({ message: 'User already exists and is verified' });
+            } else {
+                user.emailVerificationCode = generateVerificationCode();
+                user.verificationCodeExpiry = new Date(Date.now() + EMAIL_VERIFICATION_TIMEOUT);
+                await user.save();
+
+                const mailOptions = {
+                    from: process.env.ADMIN_EMAIL,
+                    to: user.email,
+                    subject: 'Email Verification Code from Code Eagles',
+                    html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                        <header style="background-color: #4CAF50; padding: 20px; text-align: center; color: white;">
+                            <h1 style="margin: 0; font-size: 24px;">Welcome to Code Eagles!</h1>
+                        </header>
+                        <div style="padding: 20px;">
+                            <h2 style="font-size: 20px; color: #333;">Hello, ${user.name}!</h2>
+                            <p style="color: #555;">To complete your registration, please verify your email address using the code below:</p>
+                            <div style="text-align: center; margin: 20px 0; padding: 10px; background-color: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;">
+                                <p style="font-size: 1.5em; font-weight: bold; color: #4CAF50;">${user.emailVerificationCode}</p>
+                            </div>
+                            <p style="color: #555;">This code is valid for the next 10 minutes. If you didn’t request this email, please ignore it.</p>
+                            <p style="margin-top: 20px; color: #555;">Happy Coding!<br>The Code Eagles Team</p>
+                        </div>
+                        <footer style="background-color: #f1f1f1; padding: 10px; text-align: center; color: #777; font-size: 14px;">
+                            <p>© 2024 Code Eagles, All rights reserved.</p>
+                        </footer>
+                    </div>
+                    `
+                };
+                await transporter.sendMail(mailOptions);
+                return res.status(200).json({ message: 'Verification code resent. Please verify your email.' });
+            }
         }
 
         const role = email === process.env.ADMIN_EMAIL ? 'admin' : 'user';
@@ -68,8 +96,8 @@ exports.register = async (req, res) => {
         });
 
         await newUser.save();
-        console.log(newUser.name);
-        console.log(newUser.password);
+
+        // Send verification email
         const mailOptions = {
             from: process.env.ADMIN_EMAIL,
             to: newUser.email,
@@ -81,11 +109,11 @@ exports.register = async (req, res) => {
                 </header>
                 <div style="padding: 20px;">
                     <h2 style="font-size: 20px; color: #333;">Hello, ${newUser.name}!</h2>
-                    <p style="color: #555;">Thank you for joining Code Eagles! To complete your registration, please verify your email address using the code below:</p>
+                    <p style="color: #555;">To complete your registration, please verify your email address using the code below:</p>
                     <div style="text-align: center; margin: 20px 0; padding: 10px; background-color: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;">
                         <p style="font-size: 1.5em; font-weight: bold; color: #4CAF50;">${newUser.emailVerificationCode}</p>
                     </div>
-                    <p style="color: #555;">This code is valid for the next 1 hour. If you didn’t request this email, please ignore it.</p>
+                    <p style="color: #555;">This code is valid for the next 10 minutes. If you didn’t request this email, please ignore it.</p>
                     <p style="margin-top: 20px; color: #555;">Happy Coding!<br>The Code Eagles Team</p>
                 </div>
                 <footer style="background-color: #f1f1f1; padding: 10px; text-align: center; color: #777; font-size: 14px;">
@@ -95,12 +123,15 @@ exports.register = async (req, res) => {
             `
         };
         await transporter.sendMail(mailOptions);
+
         res.status(200).json({ message: 'Registration successful, please verify your email' });
     } catch (error) {
         console.error('Registration error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
+
+
 
 //verify Email
 exports.verifyEmail = async (req, res) => {
@@ -133,30 +164,6 @@ exports.verifyEmail = async (req, res) => {
     }
 };
 
-// check time virify email
-// exports.checkVerificationTimeout = async () => {
-//     try {
-//         const now = new Date();
-//         console.log(`Checking for expired users at: ${now}`);
-//         const expiredUsers = await User.find({
-//             isVerified: false,
-//             verificationCodeExpiry: { $lt: now }
-//         });
-
-//         console.log(`Found ${expiredUsers.length} expired users.`);
-//         if (expiredUsers.length > 0) {
-//             await User.deleteMany({
-//                 isVerified: false,
-//                 verificationCodeExpiry: { $lt: now }
-//             });
-//             console.log(`Deleted ${expiredUsers.length} expired users.`);
-//         } else {
-//             console.log('No expired users to delete.');
-//         }
-//     } catch (error) {
-//         console.error('Error checking verification timeout:', error);
-//     }
-// };
 
 // forget password
 exports.forgotPassword = async (req, res) => {
@@ -170,7 +177,7 @@ exports.forgotPassword = async (req, res) => {
         // Generate a 6-digit code
         const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
         user.resetPasswordToken = resetCode;
-        user.resetPasswordExpiry = Date.now() + 3600000; // 1 hour 
+        user.resetPasswordExpiry = Date.now() + 1800000; // 3 minutes
         await user.save();
 
         const mailOptions = {
@@ -188,7 +195,7 @@ exports.forgotPassword = async (req, res) => {
             <div style="text-align: center; margin: 20px 0; padding: 15px; background-color: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;">
                 <p style="font-size: 2em; font-weight: bold; color: #4CAF50;">${resetCode}</p>
             </div>
-            <p style="color: #555;">This code is valid for the next <strong>1 hour</strong>. If you did not request this reset, please ignore this email or contact support if you have any concerns.</p>
+            <p style="color: #555;">This code is valid for the next <strong>3 minutes</strong>. If you did not request this reset, please ignore this email or contact support if you have any concerns.</p>
             <p style="margin-top: 20px; color: #555;">Best Regards,<br>The Code Eagles Team</p>
         </div>
         <footer style="background-color: #f1f1f1; padding: 10px; text-align: center; color: #777; font-size: 14px;">
@@ -211,6 +218,9 @@ exports.forgotPassword = async (req, res) => {
 exports.resetPassword = async (req, res) => {
     try {
         const { resetCode, newPassword } = req.body;
+        if (!newPassword || newPassword.length < 10) {
+            return res.status(400).json({ message: 'New password must be at least 10 characters long' });
+        }
         const user = await User.findOne({
             resetPasswordToken: resetCode,
             resetPasswordExpiry: { $gt: Date.now() }
@@ -231,32 +241,6 @@ exports.resetPassword = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
-
-// exports.updatePassword = async (req, res) => {
-//     const { id } = req.params;
-//     const { password } = req.body;
-
-//     try {
-//         if (req.user.id === id) {
-//             const updates = {};
-//             if (password) {
-//                 const salt = await bcrypt.genSalt(10);
-//                 updates.password = await bcrypt.hash(password, salt);
-//             }
-//             const user = await User.findByIdAndUpdate(id, updates, { new: true });
-//             if (!user) {
-//                 return res.status(404).json({ message: 'User not found' });
-//             }
-
-//             res.status(200).json({ message: 'Password updated successfully' });
-//         } else {
-//             res.status(403).json({ message: 'You are not authorized to update this password' });
-//         }
-//     } catch (error) {
-//         console.error('Error updating password:', error);
-//         res.status(500).json({ message: 'Server error' });
-//     }
-// };
 
 
 exports.login = async (req, res) => {
@@ -308,7 +292,8 @@ exports.addUser = async (req, res) => {
             return res.status(403).json({ message: 'Access denied. Admins only.' });
         }
 
-        const { name, email, password, phone_number, role, groupId, lifetimeAccess, endDate } = req.body;
+        const { name, email, password, phone_number, role, groupId } = req.body;
+
         if (!name || !email || !password || !phone_number || !role) {
             return res.status(400).json({ message: 'All fields except groupId are required' });
         }
@@ -335,30 +320,15 @@ exports.addUser = async (req, res) => {
             phone_number,
             role,
             isVerified: true,
-            groupId: group ? [{ group_id: groupId }] : [],
+            groups: group ? [{
+                groupId: groupId,
+                status: 'approved'
+            }] : [],
         });
 
         await newUser.save({ session });
 
         if (group) {
-            const newUserGroup = new UserGroup({
-                user_id: newUser._id,
-                group_id: groupId,
-                status: 'active',
-            });
-            await newUserGroup.save({ session });
-
-            const newJoinRequest = new JoinRequests({
-                user_id: newUser._id,
-                group_id: groupId,
-                status: 'approved',
-                startDate: new Date(),
-                endDate: endDate || null,
-                lifetimeAccess: lifetimeAccess || false,
-            });
-
-            await newJoinRequest.save({ session });
-
             group.members.push({ user_id: newUser._id });
             await group.save({ session });
         }
@@ -368,6 +338,7 @@ exports.addUser = async (req, res) => {
 
         res.status(201).json({ message: 'User added successfully', user: newUser });
     } catch (error) {
+
         if (session.inTransaction()) {
             await session.abortTransaction();
         }
@@ -377,6 +348,7 @@ exports.addUser = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
+
 
 
 // get user by token
@@ -444,7 +416,6 @@ exports.getAllUsers = async (req, res) => {
     }
 };
 
-// update user by admin => admin can update role and groupId, user can edit all data except role and groupId
 
 exports.updateUser = async (req, res) => {
     try {
@@ -453,8 +424,10 @@ exports.updateUser = async (req, res) => {
 
         const userIdFromToken = req.user.id;
         const userIdFromParams = req.params.id;
+
         if (!userIdFromParams || userIdFromToken === userIdFromParams) {
             if (name) updates.name = name;
+
             if (email) {
                 const existingUser = await User.findOne({ email });
                 if (existingUser && existingUser.id !== userIdFromToken) {
@@ -465,6 +438,9 @@ exports.updateUser = async (req, res) => {
             }
 
             if (password) {
+                if (password.length < 10) {
+                    return res.status(400).json({ message: 'Password must be at least 10 characters' });
+                }
                 const salt = await bcrypt.genSalt(10);
                 updates.password = await bcrypt.hash(password, salt);
             }
@@ -480,6 +456,7 @@ exports.updateUser = async (req, res) => {
 
         } else if (req.user.role === 'admin' && userIdFromParams) {
             if (role) updates.role = role;
+
         } else {
             return res.status(403).json({ message: 'Access denied' });
         }
@@ -497,42 +474,65 @@ exports.updateUser = async (req, res) => {
 };
 
 
-
-//delet user by admin and himself
+// delete user by admin and himself
 exports.deleteUser = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
         const { id } = req.params;
         const userIdFromToken = req.user.id;
         const userIdToDelete = id || userIdFromToken;
+
         if (req.user.role !== 'admin' && !id) {
             if (userIdFromToken !== userIdToDelete) {
                 return res.status(403).json({ message: 'Access denied' });
             }
         }
 
-        const user = await User.findByIdAndDelete(userIdToDelete);
+        // العثور على المستخدم
+        const user = await User.findById(userIdToDelete).session(session);
         if (!user) {
+            await session.abortTransaction();
             return res.status(404).json({ message: 'User not found' });
         }
-        const userIdObjectId = new mongoose.Types.ObjectId(userIdToDelete);
 
+        await Groups.updateMany(
+            { "members.user_id": userIdToDelete },
+            { $pull: { members: { user_id: userIdToDelete } } },
+            { session }
+        );
 
-        await Promise.all([
-            Groups.updateMany(
-                { "members.user_id": userIdObjectId },
-                { $pull: { members: { user_id: userIdObjectId } } }
-            ),
-            JoinRequests.deleteMany({ user_id: userIdObjectId }),
-            UserGroup.deleteMany({ user_id: userIdObjectId })
-        ]);
+        await Lectures.updateMany(
+            { "tasks.submissions.userId": userIdToDelete },
+            { $pull: { "tasks.$[].submissions": { userId: userIdToDelete } } },
+            { session }
+        );
 
-        return res.status(200).json({ message: 'User and associated data successfully deleted' });
+        await Lectures.updateMany(
+            { "attendees.userId": userIdToDelete },
+            { $pull: { attendees: { userId: userIdToDelete } } },
+            { session }
+        );
+
+        await User.findByIdAndDelete(userIdToDelete).session(session);
+
+        await session.commitTransaction();
+
+        return res.status(200).json({ message: 'User successfully deleted and removed from all groups, lectures, and submissions' });
 
     } catch (error) {
+        await session.abortTransaction();
         console.error(error);
         res.status(500).json({ message: 'Server error' });
+    } finally {
+        session.endSession();
     }
 };
+
+
+
+
 
 
 //the user send your feadback

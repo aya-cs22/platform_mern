@@ -30,6 +30,7 @@
     "nodemailer": "^6.9.15",
     "qrcode": "^1.5.4",
     "twilio": "^5.3.7",
+    "xss": "^1.0.15",
     "xss-clean": "^0.1.4"
   },
   "devDependencies": {

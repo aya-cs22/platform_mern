@@ -1,6 +1,4 @@
-const userGroups = require('../models/userGroups');
 const Groups = require('../models/groups');
-const JoinRequests = require('../models/JoinRequests');
 const moment = require('moment');
 const { use } = require('../config/mailConfig');
 const mongoose = require('mongoose');
@@ -70,10 +68,7 @@ exports.getGroupsById = async (req, res) => {
         if (req.user.role === 'admin') {
             return res.status(200).json(group);
         }
-        const joinRequest = await JoinRequests.findOne({
-            user_id: req.user.id,
-            group_id: group._id,
-        });
+
         console.log('Join Request:', joinRequest);
         if (!joinRequest || joinRequest.status !== 'approved') {
             return res.status(403).json({ message: 'Access denied: You must be approved or an admin to access this group' });
@@ -148,13 +143,11 @@ exports.deleteGroupsById = async (req, res) => {
         if (req.user.role !== 'admin') {
             return res.status(403).json({ message: 'Access denied' });
         }
-        await JoinRequests.deleteMany({ group_id: id });
 
         await Lectures.deleteMany({ group_id: id });
-        await userGroups.deleteMany({ group_id: id });
         await User.updateMany(
-            { 'groupId.group_id': id },  
-            { $pull: { groupId: { group_id: id } } } 
+            { 'groupId.group_id': id },
+            { $pull: { groupId: { group_id: id } } }
         );
 
         const deleteGroups = await Groups.findByIdAndDelete(id);

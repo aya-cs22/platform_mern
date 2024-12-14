@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 const taskSchema = new mongoose.Schema({
-  taskLink: String,
   description_task: String,
   start_date: Date,
   end_date: Date,
@@ -23,6 +22,9 @@ const taskSchema = new mongoose.Schema({
       score: {
         type: Number,
         default: null
+      },
+      feedback: {
+        type: String,
       }
     }
   ]
@@ -35,19 +37,6 @@ const lecturesSchema = new mongoose.Schema({
     required: true
   },
   tasks: [taskSchema],
-  submittedBy: [
-    {
-      userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-      },
-      submittedAt: {
-        type: Date,
-        default: Date.now
-      }
-    }
-  ],
   title: {
     type: String,
     required: true
@@ -85,18 +74,7 @@ const lecturesSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  mediaLinks: [
-    {
-      url: {
-        type: String,
-        required: true,
-      },
-      public_id: {
-        type: String,
-        required: true,
-      },
-    }
-  ],
+
   created_at: {
     type: Date,
     default: Date.now,

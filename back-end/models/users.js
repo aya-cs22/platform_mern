@@ -1,10 +1,12 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
+const xss = require('xss');
+
 const userSchema = new mongoose.Schema({
 
   name: {
     type: String,
-    required: true
+    required: true,
   },
   email: {
     type: String,
@@ -19,16 +21,17 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true,
-    minlength: [5, 'too short password']
+    minlength: [10, 'too short password']
   },
+
   isVerified: {
     type: Boolean,
     default: false // user need to virify your email
   },
+
   phone_number: {
     type: String,
     required: true,
-    minlength: [11, 'too short password']
   },
   role: {
     type: String,
@@ -38,19 +41,30 @@ const userSchema = new mongoose.Schema({
     }
   },
 
-  groupId: [{
-    group_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Groups' }
-  }],
-
-  date_group: {
-    type: Date,
+  googleLogin: {
+    type: Boolean,
+    default: false,
   },
+
+  groups: [
+    {
+      groupId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Group',
+      },
+      status: {
+        type: String,
+        enum: ['approved', 'rejected'],
+        default: 'rejected',
+      },
+    },
+  ],
 
   feedback: {
-    name: { type: String },
-    feedback: { type: String }
+    type: Object,
+    default: () => ({}),
   },
-  emailVerificationCode: { // Email verification code, set when a verification code is sent to the user
+  emailVerificationCode: {
     type: String,
     default: null
   },
@@ -74,9 +88,10 @@ const userSchema = new mongoose.Schema({
         ref: 'Lectures',
         required: true
       },
-      attended: {
-        type: Boolean,
-        default: false
+      attendanceStatus: {
+        type: String,
+        enum: ['present', 'absent'],
+        default: 'absent',
       },
       attendedAt: {
         type: Date,
@@ -84,6 +99,15 @@ const userSchema = new mongoose.Schema({
       }
     }
   ],
+
+  totalPresent: {
+    type: Number,
+    default: 0
+  },
+  totalAbsent: {
+    type: Number,
+    default: 0
+  },
   tasks: [
     {
       lectureId: mongoose.Schema.Types.ObjectId,
@@ -92,18 +116,10 @@ const userSchema = new mongoose.Schema({
       submittedOnTime: Boolean,
       submittedAt: Date,
       score: Number,
+      feedback: String,
     },
   ],
 
-
-  quizResults: [
-    {
-      quizId: { type: mongoose.Schema.Types.ObjectId, ref: 'Quiz' },
-      score: Number,
-      totalScore: Number,
-      pass: Boolean,
-    },
-  ],
 
   created_at: {
     type: Date,

@@ -1,15 +1,9 @@
 const Lectures = require('../models/lectures');
-const UserGroup = require('../models/userGroups');
 const Groups = require('../models/groups');
-const JoinRequests = require('../models/JoinRequests');
 
-const qrCode = require('qrcode');
-const { Admin } = require('mongodb');
 const User = require('../models/users');
 const multer = require('multer');
-const cloudinary = require('cloudinary').v2;
 const path = require('path');
-const fs = require('fs');
 const nodemailer = require('nodemailer');
 
 // require('dotenv').config();
