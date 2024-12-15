@@ -14,8 +14,8 @@ const Lectures = require('../models/lectures');
 const generateToken = (user) => {
     return jwt.sign(
         { id: user.id, name: user.name, email: user.email },
-        process.env.JWT_SECRET, // تأكد من أنك حاطط قيمة JWT_SECRET في البيئة
-        { expiresIn: '3h' }  // يمكن تعديل وقت التوكن حسب احتياجك
+        process.env.JWT_SECRET,
+        { expiresIn: '3h' }
     );
 };
 
