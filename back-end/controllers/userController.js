@@ -738,7 +738,7 @@ exports.acceptJoinRequest = async (req, res) => {
                 return res.status(500).json({ message: 'Error sending email' });
             }
             console.log('Email sent:', info.response);
-            return res.status(200).json({ message: 'Join request approved successfully' }); // Ensure response is only sent here
+            return res.status(200).json({ message: 'Join request approved successfully' });
         });
 
     } catch (error) {
@@ -761,6 +761,8 @@ exports.rejectJoinRequest = async (req, res) => {
         const user = await User.findById(userId);
         const group = await Groups.findById(groupId);
 
+
+
         if (!user || !group) {
             return res.status(404).json({ message: 'User or Group not found' });
         }
@@ -778,13 +780,31 @@ exports.rejectJoinRequest = async (req, res) => {
         group.members = group.members.filter(member => member.user_id.toString() !== user._id.toString());
         await group.save();
 
-        return res.status(200).json({ message: 'Join request rejected and user removed from the group' });
+        const mailOptions = {
+            from: process.env.ADMIN_EMAIL,
+            to: user.email,
+            subject: `Your Join Request Has Been Rejected`,
+            text: `Hello ${user.name},\n\nWe regret to inform you that your request to join the group "${group.title}" has been rejected. If you have any questions, feel free to reach out.\n\nBest Regards,\nThe Team`
+        };
+
+        transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+                console.error('Error sending email:', error);
+                return res.status(500).json({ message: 'Error sending email' });
+            }
+            console.log('Email sent:', info.response);
+            return res.status(200).json({ message: 'Join request approved successfully' });
+        });
+
 
     } catch (error) {
         console.error('Error in rejecting join request:', error);
         return res.status(500).json({ message: 'Server error' });
     }
 };
+
+
+
 
 
 exports.updateJoinRequestStatus = async (req, res) => {

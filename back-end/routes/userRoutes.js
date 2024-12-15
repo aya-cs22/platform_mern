@@ -27,14 +27,11 @@ router.delete('/:id?', authMiddleware, userController.deleteUser);
 
 //join group
 router.post('/joinGroupRequest', authMiddleware, userController.joinGroupRequest);
-// في ملف userRoutes.js
-// router.get('/pending-join-requests/:groupId', authMiddleware, userController.getAllPendingJoinRequests);
 router.get('/pending-join-requests/:groupId', authMiddleware, userController.getPendingJoinRequestsByGroup);
 
 router.post('/accept-join-request', authMiddleware, userController.acceptJoinRequest);
 router.put('/update-join-request/:groupId/:userId', authMiddleware, userController.updateJoinRequestStatus);
 
-// Route لرفض طلب الانضمام
 router.post('/reject-join-request', authMiddleware, userController.rejectJoinRequest);
 
 
