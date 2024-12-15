@@ -4,6 +4,17 @@ const { use } = require('../config/mailConfig');
 const mongoose = require('mongoose');
 const User = require('../models/users');
 const Lectures = require('../models/lectures');
+
+const nodemailer = require('nodemailer'); // تأكد من أنك قد قمت بتثبيت nodemailer
+
+// إعداد البريد الإلكتروني باستخدام nodemailer
+const transporter = nodemailer.createTransport({
+    service: 'gmail', // يمكن استبداله بما يتناسب مع مزود البريد الذي تستخدمه
+    auth: {
+        user: process.env.ADMIN_EMAIL, // عنوان البريد الإلكتروني للمشرف
+        pass: process.env.ADMIN_EMAIL_PASSWORD, // كلمة المرور للمشرف
+    },
+});
 // creat group by admin
 exports.creatGroups = async (req, res) => {
     try {
@@ -189,3 +200,4 @@ exports.deleteGroupsById = async (req, res) => {
         session.endSession();
     }
 };
+

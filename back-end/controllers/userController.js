@@ -9,7 +9,7 @@ const Groups = require('../models/groups');
 const Lectures = require('../models/lectures');
 const authMiddleware = require('../middleware/authenticate')
 
-
+const nodemailer = require('nodemailer');
 
 const generateToken = (user) => {
     return jwt.sign(
@@ -574,6 +574,7 @@ exports.getAllFeedback = async (req, res) => {
 
         const feedbacks = users.map(user => ({
             email: user.email,
+            name: user.name,
             feedback: user.feedback,
         }));
 
@@ -584,3 +585,260 @@ exports.getAllFeedback = async (req, res) => {
     }
 };
 
+
+exports.joinGroupRequest = async (req, res) => {
+    try {
+        const { groupId } = req.body;
+        const userId = req.user.id;
+
+        if (!groupId) {
+            return res.status(400).json({ message: 'groupId is required' });
+        }
+
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const group = await Groups.findById(groupId);
+        if (!group) {
+            return res.status(404).json({ message: 'Group not found' });
+        }
+
+        const existingRequest = user.groups.find(group => group.groupId.toString() === groupId);
+        if (existingRequest) {
+            return res.status(400).json({ message: 'You have already sent a request to join this group.' });
+        }
+
+        const joinRequest = {
+            groupId: groupId,
+            status: 'pending',
+        };
+
+        user.groups.push(joinRequest);
+
+        await user.save();
+
+        const adminEmail = process.env.ADMIN_EMAIL;
+        const mailOptions = {
+            from: user.email,
+            to: adminEmail,
+            subject: 'New Join Request',
+            html: `
+                <p>Hello Admin,</p>
+                <p>The user <strong>${user.name}</strong> (<a href="mailto:${user.email}">${user.email}</a>) has requested to join the group "<strong>${group.title}</strong>".</p>
+                <p>Please review the request and take appropriate action:</p>
+                <div style="display: flex; gap: 10px;">
+                    <a href="http://localhost:8000/api/users/accept-join-request" 
+                        style="padding: 10px 15px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px;"
+                        onclick="fetch('http://localhost:8000/api/users/accept-join-request', { method: 'POST', body: JSON.stringify({ groupId: '${groupId}', userId: '${userId}' }), headers: { 'Content-Type': 'application/json' }});">
+                        Accept
+                    </a>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <a href="http://localhost:8000/api/users/reject-join-request" 
+                        style="padding: 10px 15px; background-color: #FF6347; color: white; text-decoration: none; border-radius: 5px;"
+                        onclick="fetch('http://localhost:8000/api/users/reject-join-request', { method: 'POST', body: JSON.stringify({ groupId: '${groupId}', userId: '${userId}' }), headers: { 'Content-Type': 'application/json' }});">
+                        Reject
+                    </a>
+                </div>
+            `
+        };;
+
+        transporter.sendMail(mailOptions, (error, data) => {
+            if (error) {
+                console.error('Error sending email:', error);
+                return res.status(500).json({ message: 'Error sending email' });
+            }
+            console.log('Email sent:', data.response);
+        });
+
+        return res.status(200).json({ message: 'Join request sent successfully.' });
+    } catch (error) {
+        console.error('Error sending join request:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+
+
+
+exports.getPendingJoinRequestsByGroup = async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Access denied. Admins only.' });
+        }
+
+        const { groupId } = req.params;
+
+        const usersWithPendingRequests = await User.find({
+            "groups.groupId": groupId,
+            "groups.status": "pending"
+        });
+
+        if (usersWithPendingRequests.length === 0) {
+            return res.status(404).json({ message: 'No pending join requests found for this group' });
+        }
+
+        const pendingRequests = usersWithPendingRequests.map(user => {
+            return {
+                userId: user._id,
+                userName: user.name,
+                pendingGroups: user.groups.filter(group => group.status === 'pending' && group.groupId.toString() === groupId)
+            };
+        });
+
+        return res.status(200).json({ pendingRequests });
+
+    } catch (error) {
+        console.error('Error in fetching pending join requests:', error);
+        return res.status(500).json({ message: 'Server error' });
+    }
+};
+
+exports.acceptJoinRequest = async (req, res) => {
+    try {
+        const { groupId, userId } = req.body;
+        const adminId = req.user.id;
+
+        const adminUser = await User.findById(adminId);
+        if (adminUser.role !== 'admin') {
+            return res.status(403).json({ message: 'You do not have permission to perform this action' });
+        }
+
+        const user = await User.findById(userId);
+        const group = await Groups.findById(groupId);
+
+        if (!user || !group) {
+            return res.status(404).json({ message: 'User or Group not found' });
+        }
+
+        const userRequest = user.groups.find(group => group.groupId.toString() === groupId);
+        if (!userRequest || userRequest.status !== 'pending') {
+            return res.status(400).json({ message: 'No pending request found for this group' });
+        }
+
+        userRequest.status = 'approved';
+        await user.save();
+
+        group.members.push({ user_id: user._id });
+        await group.save();
+
+        const mailOptions = {
+            from: process.env.ADMIN_EMAIL,
+            to: user.email,
+            subject: 'Your Join Request Has Been Approved',
+            text: `Hello ${user.name},\n\nYour request to join the group "${group.title}" has been approved. Welcome to the group!\n\nBest Regards,\nThe Team`
+        };
+
+        transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+                console.error('Error sending email:', error);
+                return res.status(500).json({ message: 'Error sending email' });
+            }
+            console.log('Email sent:', info.response);
+            return res.status(200).json({ message: 'Join request approved successfully' }); // Ensure response is only sent here
+        });
+
+    } catch (error) {
+        console.error('Error in accepting join request:', error);
+        return res.status(500).json({ message: 'Server error' });
+    }
+};
+
+
+exports.rejectJoinRequest = async (req, res) => {
+    try {
+        const { groupId, userId } = req.body;
+        const adminId = req.user.id;
+
+        const adminUser = await User.findById(adminId);
+        if (adminUser.role !== 'admin') {
+            return res.status(403).json({ message: 'You do not have permission to perform this action' });
+        }
+
+        const user = await User.findById(userId);
+        const group = await Groups.findById(groupId);
+
+        if (!user || !group) {
+            return res.status(404).json({ message: 'User or Group not found' });
+        }
+
+        const userRequest = user.groups.find(group => group.groupId.toString() === groupId);
+        if (!userRequest || userRequest.status !== 'pending') {
+            return res.status(400).json({ message: 'No pending request found for this group' });
+        }
+
+        userRequest.status = 'rejected';
+
+        user.groups = user.groups.filter(group => group.groupId.toString() !== groupId);
+        await user.save();
+
+        group.members = group.members.filter(member => member.user_id.toString() !== user._id.toString());
+        await group.save();
+
+        return res.status(200).json({ message: 'Join request rejected and user removed from the group' });
+
+    } catch (error) {
+        console.error('Error in rejecting join request:', error);
+        return res.status(500).json({ message: 'Server error' });
+    }
+};
+
+
+exports.updateJoinRequestStatus = async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Access denied. Admins only.' });
+        }
+
+        const { groupId, userId } = req.params;
+        const { status } = req.body;
+
+        if (status !== 'approved' && status !== 'rejected') {
+            return res.status(400).json({ message: 'Invalid status. It must be "approved" or "rejected".' });
+        }
+
+        const user = await User.findOne({
+            _id: userId,
+            "groups.groupId": groupId
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (status === 'rejected') {
+            await Groups.updateOne(
+                { _id: groupId },
+                { $pull: { members: { user_id: userId } } }
+            );
+
+            await User.updateOne(
+                { _id: userId, "groups.groupId": groupId },
+                { $set: { "groups.$.status": 'rejected' } }
+            );
+
+            return res.status(200).json({ message: 'Request rejected and user removed from the group' });
+        }
+
+        if (status === 'approved') {
+            await Groups.updateOne(
+                { _id: groupId },
+                { $addToSet: { members: { user_id: userId } } }
+            );
+
+            await User.updateOne(
+                { _id: userId, "groups.groupId": groupId },
+                { $set: { "groups.$.status": 'approved' } }
+            );
+
+            return res.status(200).json({ message: 'Request approved and user added to the group' });
+        }
+
+    } catch (error) {
+        console.error('Error in updating join request status:', error);
+        return res.status(500).json({ message: 'Server error' });
+    }
+};

@@ -13,5 +13,4 @@ router.get('/:groupId', authMiddleware, groupsController.getGroupsById);
 router.put('/:groupId', authMiddleware, groupsController.updateGroupsById);
 router.delete('/:groupId', authMiddleware, groupsController.deleteGroupsById);
 
-
 module.exports = router;
