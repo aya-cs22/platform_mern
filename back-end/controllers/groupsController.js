@@ -39,41 +39,47 @@ exports.getAllGroups = async (req, res) => {
 
 
 
-// // get groups by id
-// exports.getGroupsById = async (req, res) => {
-//     try {
-//         const groups = await Groups.findById(req.params.id).populate('type_course');
-//         if (!groups) {
-//             return res.status(404).json({ message: 'groups not found' });
-//         }
-//         return res.status(200).json(groups);
-//     } catch (error) {
-//         console.error('Error  fetching group');
-//         res.status(500).json({ message: 'server error' });
-//     }
-// };
-
 
 exports.getGroupsById = async (req, res) => {
     try {
-        const group = await Groups.findById(req.params.id);
+        console.log("User groups:", req.user.groups);
+
+        if (req.user.role === 'admin') {
+            const group = await Groups.findById(req.params.groupId);
+            if (!group) {
+                return res.status(404).json({ message: 'Group not found' });
+            }
+            return res.status(200).json(group);
+        }
+
+        if (!req.user.groups || req.user.groups.length === 0) {
+            return res.status(403).json({ message: 'You are not a member of any group' });
+        }
+
+        const group = await Groups.findById(req.params.groupId);
 
         if (!group) {
             return res.status(404).json({ message: 'Group not found' });
         }
 
-        console.log('User role:', req.user.role);
-        console.log('User ID:', req.user.id);
+        console.log('Group from DB:', group);
+        const approvedGroups = req.user.groups.filter(group => group.status === 'approved');
 
-        if (req.user.role === 'admin') {
-            return res.status(200).json(group);
+        console.log("Approved groups:", approvedGroups);
+
+        if (approvedGroups.length === 0) {
+            return res.status(403).json({ message: 'You do not have an approved membership in any group' });
+        }
+        const userInApprovedGroup = approvedGroups.find(
+            approvedGroup => approvedGroup.groupId.toString() === req.params.groupId
+        );
+
+        if (!userInApprovedGroup) {
+            return res.status(403).json({ message: 'Your membership is not approved in this group' });
         }
 
-        console.log('Join Request:', joinRequest);
-        if (!joinRequest || joinRequest.status !== 'approved') {
-            return res.status(403).json({ message: 'Access denied: You must be approved or an admin to access this group' });
-        }
         return res.status(200).json(group);
+
     } catch (error) {
         console.error('Error fetching group:', error);
         res.status(500).json({ message: 'Server error' });
@@ -82,10 +88,11 @@ exports.getGroupsById = async (req, res) => {
 
 
 
+
 // update group by id
 exports.updateGroupsById = async (req, res) => {
     try {
-        const { id } = req.params;
+        const { groupId } = req.params;
         const { title, type_course, location, start_date, end_date } = req.body;
 
         if (req.user.role !== 'admin') {
@@ -100,7 +107,7 @@ exports.updateGroupsById = async (req, res) => {
             end_date: end_date
         };
 
-        const updatedGroup = await Groups.findByIdAndUpdate(id, updateGroupsData, { new: true, runValidators: true });
+        const updatedGroup = await Groups.findByIdAndUpdate(groupId, updateGroupsData, { new: true, runValidators: true });
 
         if (!updatedGroup) {
             return res.status(404).json({ message: 'Group not found' });
@@ -113,6 +120,7 @@ exports.updateGroupsById = async (req, res) => {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
+
 
 
 
@@ -137,27 +145,47 @@ exports.sendGroupId = async (req, res) => {
 
 
 exports.deleteGroupsById = async (req, res) => {
-    try {
-        const { id } = req.params;
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-        if (req.user.role !== 'admin') {
-            return res.status(403).json({ message: 'Access denied' });
+    try {
+        const { groupId } = req.params;
+
+        console.log('Received groupId:', groupId);
+
+        if (!mongoose.Types.ObjectId.isValid(groupId) || groupId.length !== 24) {
+            return res.status(400).json({ message: 'Invalid group ID format' });
         }
 
-        await Lectures.deleteMany({ group_id: id });
-        await User.updateMany(
-            { 'groupId.group_id': id },
-            { $pull: { groupId: { group_id: id } } }
-        );
-
-        const deleteGroups = await Groups.findByIdAndDelete(id);
-        if (!deleteGroups) {
+        const group = await Groups.findById(groupId).session(session);
+        if (!group) {
+            await session.abortTransaction();
             return res.status(404).json({ message: 'Group not found' });
         }
 
-        res.status(200).json({ message: 'Group and related data deleted successfully' });
+        await Lectures.updateMany(
+            { "groupId": groupId },
+            { $unset: { groupId: "" } },
+            { session }
+        );
+
+        await User.updateMany(
+            { "groups.groupId": groupId },
+            { $pull: { "groups": { groupId: groupId } } },
+            { session }
+        );
+
+        await Groups.findByIdAndDelete(groupId).session(session);
+
+        await session.commitTransaction();
+
+        return res.status(200).json({ message: 'Group and related data successfully deleted' });
+
     } catch (error) {
+        await session.abortTransaction();
         console.error(error);
         res.status(500).json({ message: 'Server error' });
+    } finally {
+        session.endSession();
     }
 };
