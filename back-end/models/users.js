@@ -60,10 +60,8 @@ const userSchema = new mongoose.Schema({
     },
   ],
 
-  feedback: {
-    type: Object,
-    default: () => ({}),
-  },
+  feedback: { type: String, default: '' },
+
   emailVerificationCode: {
     type: String,
     default: null

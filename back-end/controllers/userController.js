@@ -7,7 +7,7 @@ const bcrypt = require('bcrypt');
 const mongoose = require('mongoose');
 const Groups = require('../models/groups');
 const Lectures = require('../models/lectures');
-
+const authMiddleware = require('../middleware/authenticate')
 
 
 
@@ -452,12 +452,7 @@ exports.updateUser = async (req, res) => {
             }
 
             if (phone_number) {
-                const existingUserWithPhone = await User.findOne({ phone_number });
-                if (existingUserWithPhone && existingUserWithPhone.id !== userIdFromToken) {
-                    return res.status(400).json({ message: 'Phone number already exists' });
-                } else {
-                    updates.phone_number = phone_number;
-                }
+                updates.phone_number = phone_number;
             }
 
         } else if (req.user.role === 'admin' && userIdFromParams) {
@@ -467,18 +462,16 @@ exports.updateUser = async (req, res) => {
             return res.status(403).json({ message: 'Access denied' });
         }
 
-        // تحديث البيانات
         const user = await User.findByIdAndUpdate(userIdFromParams || userIdFromToken, updates, { new: true });
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // إذا تم تحديث الباسورد، هنضيف تسجيل دخول جديد باستخدامه
         if (password) {
-            const token = generateToken(user); // دالة لتوليد التوكن الجديد
+            const token = generateToken(user);
             return res.status(200).json({
                 message: 'User updated successfully',
-                token: token,  // ارسال التوكن الجديد
+                token: token,
                 user: user
             });
         }
@@ -506,7 +499,6 @@ exports.deleteUser = async (req, res) => {
             }
         }
 
-        // العثور على المستخدم
         const user = await User.findById(userIdToDelete).session(session);
         if (!user) {
             await session.abortTransaction();
@@ -546,27 +538,22 @@ exports.deleteUser = async (req, res) => {
     }
 };
 
-
-
-
-
-
-//the user send your feadback
 exports.submitFeedback = async (req, res) => {
-    const { name, email, feedback } = req.body;
+    const { feedback } = req.body;
 
-    if (!name || !email || !feedback) {
-        return res.status(400).json({ message: 'Name, Email, and Feedback are required' });
+    if (!feedback) {
+        return res.status(400).json({ message: 'Feedback is required' });
     }
 
     try {
-        const user = await User.findOne({ email });
+        const userId = req.user.id;
+        const user = await User.findById(userId);
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        user.feedback = { name, feedback };
+        user.feedback = feedback;
         await user.save();
 
         res.status(200).json({ message: 'Feedback submitted successfully' });
@@ -577,26 +564,17 @@ exports.submitFeedback = async (req, res) => {
 };
 
 
-
-// read all feadback
+// get All Feedback
 exports.getAllFeedback = async (req, res) => {
     try {
-        const users = await User.find({ feedback: { $exists: true } });
+        const users = await User.find({ 'feedback': { $exists: true } });
         if (users.length === 0) {
             return res.status(404).json({ message: 'No feedback found' });
         }
 
-        // const feedbacks = users.map(user => ({
-        //     email: user.email,
-        //     feedbacks: user.feedback.map(item => ({
-        //         name: item.name,
-        //         feedback: item.feedback
-        //     }))
-        // }));
         const feedbacks = users.map(user => ({
             email: user.email,
-            name: user.feedback.name,
-            feedback: user.feedback.feedback,
+            feedback: user.feedback,
         }));
 
         res.status(200).json({ feedbacks });
@@ -606,64 +584,3 @@ exports.getAllFeedback = async (req, res) => {
     }
 };
 
-
-
-// Get feadback by user ID
-exports.getFeedbackById = async (req, res) => {
-    const { userId } = req.params;
-
-    try {
-        const user = await User.findById(userId);
-
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        if (!user.feedback || user.feedback.length === 0) {
-            return res.status(404).json({ message: 'No feedback available for this user' });
-        }
-
-        const feedbacks = users.map(user => ({
-            email: user.email,
-            name: user.feedback.name,
-            feedback: user.feedback.feedback,
-        }));
-
-        res.status(200).json({ email: user.email, feedbacks });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error', error: error.message });
-    }
-};
-
-// update feadback by userId and feedbackId
-exports.updateFeedback = async (req, res) => {
-    const { userId, feedbackId } = req.params;
-    const { name, feedback } = req.body;
-
-    if (!name || !feedback) {
-        return res.status(400).json({ message: 'Name and Feedback are required' });
-    }
-
-    try {
-        const user = await User.findById(userId);
-
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-        const feedbackIndex = user.feedback.findIndex(item => item._id.toString() === feedbackId);
-
-        if (feedbackIndex === -1) {
-            return res.status(404).json({ message: 'Feedback not found' });
-        }
-
-        user.feedback[feedbackIndex] = { name, feedback };
-
-        await user.save();
-
-        res.status(200).json({ message: 'Feedback updated successfully' });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error', error: error.message });
-    }
-};
