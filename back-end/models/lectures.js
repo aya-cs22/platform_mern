@@ -51,7 +51,7 @@ const lecturesSchema = new mongoose.Schema({
     type: [String],
     required: true
   },
-  qr_code: {
+  code: {
     type: String,
     required: true,
     unique: true

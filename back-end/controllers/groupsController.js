@@ -5,16 +5,15 @@ const mongoose = require('mongoose');
 const User = require('../models/users');
 const Lectures = require('../models/lectures');
 
-const nodemailer = require('nodemailer'); // تأكد من أنك قد قمت بتثبيت nodemailer
+const nodemailer = require('nodemailer');
 
-// إعداد البريد الإلكتروني باستخدام nodemailer
-const transporter = nodemailer.createTransport({
-    service: 'gmail', // يمكن استبداله بما يتناسب مع مزود البريد الذي تستخدمه
-    auth: {
-        user: process.env.ADMIN_EMAIL, // عنوان البريد الإلكتروني للمشرف
-        pass: process.env.ADMIN_EMAIL_PASSWORD, // كلمة المرور للمشرف
-    },
-});
+// const transporter = nodemailer.createTransport({
+//     service: 'gmail',
+//     auth: {
+//         user: process.env.ADMIN_EMAIL,
+//         pass: process.env.ADMIN_EMAIL_PASSWORD,
+//     },
+// });
 // creat group by admin
 exports.creatGroups = async (req, res) => {
     try {
@@ -164,30 +163,37 @@ exports.deleteGroupsById = async (req, res) => {
 
         console.log('Received groupId:', groupId);
 
+        // التحقق من صحة الـ groupId
         if (!mongoose.Types.ObjectId.isValid(groupId) || groupId.length !== 24) {
             return res.status(400).json({ message: 'Invalid group ID format' });
         }
 
+        // البحث عن الجروب في قاعدة البيانات
         const group = await Groups.findById(groupId).session(session);
         if (!group) {
             await session.abortTransaction();
             return res.status(404).json({ message: 'Group not found' });
         }
 
-        await Lectures.updateMany(
-            { "groupId": groupId },
-            { $unset: { groupId: "" } },
-            { session }
-        );
+        // حذف المحاضرات المرتبطة بالجروب
+        const deleteLecturesResult = await Lectures.deleteMany({ group_id: groupId }).session(session);
+        if (deleteLecturesResult.deletedCount === 0) {
+            console.log('No lectures were found to delete for this group');
+        } else {
+            console.log(`${deleteLecturesResult.deletedCount} lectures deleted`);
+        }
 
+        // تحديث المستخدمين وإزالة الجروب المرتبط بهم
         await User.updateMany(
             { "groups.groupId": groupId },
             { $pull: { "groups": { groupId: groupId } } },
             { session }
         );
 
+        // حذف الجروب من قاعدة البيانات
         await Groups.findByIdAndDelete(groupId).session(session);
 
+        // تأكيد التغيير
         await session.commitTransaction();
 
         return res.status(200).json({ message: 'Group and related data successfully deleted' });
