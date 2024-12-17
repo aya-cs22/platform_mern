@@ -607,18 +607,20 @@ exports.joinGroupRequest = async (req, res) => {
         }
 
         const existingRequest = user.groups.find(group => group.groupId.toString() === groupId);
-        if (existingRequest) {
-            return res.status(400).json({ message: 'You have already sent a request to join this group.' });
+        if (existingRequest && (existingRequest.status === 'pending' || existingRequest.status === 'rejected')) {
+
+            existingRequest.status = 'pending';
+            await user.save();
+        } else if (existingRequest && existingRequest.status === 'approved') {
+            return res.status(400).json({ message: 'You are already a member of this group.' });
+        } else {
+            const joinRequest = {
+                groupId: groupId,
+                status: 'pending',
+            };
+            user.groups.push(joinRequest);
+            await user.save();
         }
-
-        const joinRequest = {
-            groupId: groupId,
-            status: 'pending',
-        };
-
-        user.groups.push(joinRequest);
-
-        await user.save();
 
         const adminEmail = process.env.ADMIN_EMAIL;
         const mailOptions = {
@@ -680,11 +682,15 @@ exports.getPendingJoinRequestsByGroup = async (req, res) => {
         if (usersWithPendingRequests.length === 0) {
             return res.status(404).json({ message: 'No pending join requests found for this group' });
         }
-
+        const group = await Groups.findById(groupId);
+        if (!group) {
+            return res.status(404).json({ message: 'Group not found' });
+        }
         const pendingRequests = usersWithPendingRequests.map(user => {
             return {
                 userId: user._id,
                 userName: user.name,
+                group: group.title,
                 pendingGroups: user.groups.filter(group => group.status === 'pending' && group.groupId.toString() === groupId)
             };
         });
@@ -837,7 +843,7 @@ exports.updateJoinRequestStatus = async (req, res) => {
 
             await User.updateOne(
                 { _id: userId, "groups.groupId": groupId },
-                { $set: { "groups.$.status": 'rejected' } }
+                { $pull: { groups: { groupId: groupId } } }
             );
 
             return res.status(200).json({ message: 'Request rejected and user removed from the group' });

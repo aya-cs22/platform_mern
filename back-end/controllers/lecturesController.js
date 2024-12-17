@@ -402,94 +402,102 @@ exports.getUserNotAttendedLecturesInGroup = async (req, res) => {
 
 
 
+// delet lecture by id
+exports.deleteLecturesById = async (req, res) => {
+  try {
+    const { lectureId } = req.params;
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const deletedLecture = await Lectures.findByIdAndDelete(lectureId);
+    if (!deletedLecture) {
+      return res.status(404).json({ message: 'Lecture not found' });
+    }
+
+    await User.updateMany(
+      { 'attendance.lectureId': lectureId },
+      { $pull: { attendance: { lectureId } } }
+    );
+
+    res.status(200).json({ message: 'Lecture deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
 
 
 
 
 
+// creat task by admin
+exports.createTaskInLecture = async (req, res) => {
+  try {
+    const { lectureId } = req.params;
+    const { description_task, end_date } = req.body;
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const lecture = await Lectures.findById(lectureId);
+    if (!lecture) {
+      return res.status(404).json({ message: 'Lecture not found' });
+    }
+
+    const newTask = {
+      description_task,
+      end_date,
+    };
+
+    lecture.tasks.push(newTask);
+    lecture.updated_at = Date.now();
+    await lecture.save();
+
+    return res.status(201).json({ message: 'Task created successfully', task: newTask });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
 
 
 
 
+// update Task In Lecture
+exports.updateTaskInLecture = async (req, res) => {
+  try {
+    const { lectureId, taskId } = req.params;
+    const { description_task, end_date } = req.body;
 
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
 
-// // delet lecture by id
-// exports.deleteLecturesById = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     if (req.user.role !== 'admin') {
-//       return res.status(403).json({ message: 'Access denied' });
-//     }
-//     const deletedLecture = await Lectures.findByIdAndDelete(id);
-//     if (!deletedLecture) {
-//       return res.status(404).json({ message: 'courses not found' });
-//     }
-//     res.status(200).json({ message: 'lecture delet successfully' });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: 'server error' });
-//   }
-// };
+    const lecture = await Lectures.findById(lectureId);
+    if (!lecture) {
+      return res.status(404).json({ message: 'Lecture not found' });
+    }
 
-// // creat task by admin
-// exports.createTask = async (req, res) => {
-//   try {
-//     const { lectureId } = req.params;
-//     const { taskLink, description_task, start_date, end_date } = req.body;
-//     if (req.user.role !== 'admin') {
-//       return res.status(403).json({ message: 'Acess denied' });
-//     }
-//     const lecture = await Lectures.findById(lectureId);
-//     if (!lecture) {
-//       return res.status(404).json({ message: 'Lecture not found' });
-//     }
-//     lecture.tasks.push({
-//       taskLink,
-//       description_task,
-//       start_date,
-//       end_date
-//     });
-//     await lecture.save();
-//     res.status(201).json({ message: 'Task added successfully' });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: 'Server error' });
-//   }
-// };
+    const task = lecture.tasks.id(taskId);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
 
+    if (description_task) task.description_task = description_task;
+    if (end_date) task.end_date = end_date;
 
-// // edit task by taskId
-// exports.editTask = async (req, res) => {
-//   try {
-//     const { lectureId, taskId } = req.params;
-//     const { taskLink, description_task, start_date, end_date } = req.body;
+    lecture.updated_at = Date.now();
 
-//     if (req.user.role !== 'admin') {
-//       return res.status(403).json({ message: 'Access denied' });
-//     }
+    await lecture.save();
 
-//     const lecture = await Lectures.findById(lectureId);
-//     if (!lecture) {
-//       return res.status(404).json({ message: 'Lecture not found' });
-//     }
-
-//     const task = lecture.tasks.id(taskId);
-//     if (!task) {
-//       return res.status(404).json({ message: 'Task not found' });
-//     }
-
-//     task.taskLink = taskLink || task.taskLink;
-//     task.description_task = description_task || task.description_task;
-//     task.start_date = start_date || task.start_date;
-//     task.end_date = end_date || task.end_date;
-
-//     await lecture.save();
-//     res.status(200).json({ message: 'Task updated successfully' });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: 'Server error' });
-//   }
-// };
+    return res.status(200).json({ message: 'Task updated successfully', task });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
 
 
 // // delet task by taskId
@@ -521,6 +529,94 @@ exports.getUserNotAttendedLecturesInGroup = async (req, res) => {
 //     res.status(500).json({ message: 'Server error' });
 //   }
 // };
+
+
+
+
+// Get Task by ID inside a lecture
+exports.getTaskById = async (req, res) => {
+  try {
+    const { lectureId, taskId } = req.params;
+
+    // Case for admin
+    if (req.user.role === 'admin') {
+      const lecture = await Lectures.findById(lectureId).populate('group_id');
+      if (!lecture) {
+        return res.status(404).json({ message: 'Lecture not found' });
+      }
+
+      const task = lecture.tasks.id(taskId); // Find task by taskId inside the lecture
+      if (!task) {
+        return res.status(404).json({ message: 'Task not found' });
+      }
+
+      return res.status(200).json({ task });
+    }
+
+    // Case for non-admin user
+    const lecture = await Lectures.findById(lectureId).populate('group_id');
+    if (!lecture) {
+      return res.status(404).json({ message: 'Lecture not found' });
+    }
+
+    const user = req.user;
+    const userGroup = user.groups.find(group => group.groupId.toString() === lecture.group_id._id.toString());
+
+    if (!userGroup) {
+      return res.status(403).json({ message: 'Access denied, user not in the group' });
+    }
+
+    // Check if the user has an approved status in the group
+    if (userGroup.status !== 'approved') {
+      return res.status(403).json({ message: 'Access denied, user not approved in the group' });
+    }
+
+    const task = lecture.tasks.id(taskId); // Find task by taskId inside the lecture
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    return res.status(200).json({ task });
+  } catch (error) {
+    console.error('Error getting task:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // // Get all tasks by lecture id
 // exports.getTasksByLectureId = async (req, res) => {

@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 const taskSchema = new mongoose.Schema({
   description_task: String,
-  start_date: Date,
   end_date: Date,
 
   submissions: [

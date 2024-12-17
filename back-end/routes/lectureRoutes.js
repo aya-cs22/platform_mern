@@ -13,7 +13,10 @@ router.get('/:lectureId/attendance', authMiddleware, lecturesController.getAtten
 router.get('/:lectureId/non-attendees', authMiddleware, lecturesController.getUsersNotAttendedLecture);
 router.get('/:groupId/attended-lectures', authMiddleware, lecturesController.getUserAttendedLecturesInGroup);
 router.get('/:groupId/non-attended-lectures', authMiddleware, lecturesController.getUserNotAttendedLecturesInGroup);
-
+router.delete('/:lectureId', authMiddleware, lecturesController.deleteLecturesById);
+router.post('/:lectureId/createtasks', authMiddleware, lecturesController.createTaskInLecture);
+router.put('/:lectureId/tasks/:taskId', authMiddleware, lecturesController.updateTaskInLecture);
+router.get('/:lectureId/tasks/taskId', authMiddleware, lecturesController.getTaskById);
 
 
 
@@ -30,13 +33,10 @@ router.get('/:groupId/non-attended-lectures', authMiddleware, lecturesController
 
 // // Get lecture by ID
 // router.delete('/:id', authMiddleware, lecturesController.deleteLecturesById);
-// router.post('/:lectureId/createtasks', authMiddleware, lecturesController.createTask);
-// router.get('/:lectureId/tasks', authMiddleware, lecturesController.getTasksByLectureId);
 // //get Lecture WithTasks AndUsers
 // // router.get('/:lectureId', authMiddleware, lecturesController.getLectureWithTasksAndUsers);
 
 // //update and delet task
-// router.put('/:lectureId/tasks/:taskId', authMiddleware, lecturesController.editTask);
 // router.delete('/:lectureId/tasks/:taskId', authMiddleware, lecturesController.deleteTask);
 // // Get Attendees for a Lecture
 // router.get('/:lectureId/attendees', lecturesController.getLectureAttendees);
@@ -52,10 +52,6 @@ router.get('/:groupId/non-attended-lectures', authMiddleware, lecturesController
 // router.get('/:lectureId/tasks/:taskId', authMiddleware, lecturesController.getTaskById);
 // router.get('/tasks/:taskId/submissions', authMiddleware, lecturesController.getUsersWhoSubmittedTask);
 // router.get('/tasks/submitted', authMiddleware, lecturesController.getTasksSubmittedByUser);
-
-// // cloudinary
-// // router.post('/uploadMediaAndUpdateLecture', upload.single('file'), lecturesController.uploadMediaAndUpdateLecture);
-// // router.delete('/delete-media-link', lecturesController.deleteMediaLink);
 
 
 module.exports = router;

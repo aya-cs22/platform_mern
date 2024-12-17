@@ -28,6 +28,7 @@ router.delete('/:id?', authMiddleware, userController.deleteUser);
 //join group
 router.post('/joinGroupRequest', authMiddleware, userController.joinGroupRequest);
 router.get('/pending-join-requests/:groupId', authMiddleware, userController.getPendingJoinRequestsByGroup);
+// router.get('/pending-join-requests', authMiddleware, userController.getPendingJoinRequestsForAllGroups);
 
 router.post('/accept-join-request', authMiddleware, userController.acceptJoinRequest);
 router.put('/update-join-request/:groupId/:userId', authMiddleware, userController.updateJoinRequestStatus);
