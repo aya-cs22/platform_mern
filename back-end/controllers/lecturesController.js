@@ -40,23 +40,53 @@ exports.createLectures = async (req, res) => {
     }
 
     const users = await User.find({ 'groups.groupId': group_id });
-
     const approvedUsers = users.filter(user =>
       user.groups.some(group => group.groupId.toString() === group_id && group.status === 'approved')
     );
 
-    const emailAddresses = approvedUsers.map(user => user.email);
+    for (let user of approvedUsers) {
+      const alreadyAttended = user.attendance.some(att => att.lectureId.toString() === lecture._id.toString());
+      if (!alreadyAttended) {
+        user.attendance.push({
+          lectureId: lecture._id,
+          attendanceStatus: 'absent',
+          attendedAt: null,
+        });
+        user.totalAbsent += 1;
+      }
 
-    if (emailAddresses.length === 0) {
-      console.log('No approved users to notify');
-    } else {
+      await user.save();
+    }
+
+    const emailAddresses = approvedUsers.map(user => user.email);
+    if (emailAddresses.length > 0) {
       emailAddresses.forEach(async (email) => {
         const mailOptions = {
           from: process.env.ADMIN_EMAIL,
           to: email,
-          subject: `New Lecture Created: ${title}`,
+          subject: `✨ New Lecture Alert: ${title}! 🚀`,
+          html: `
+            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <header style="background-color: #4CAF50; color: white; text-align: center; padding: 20px;">
+                <h1 style="margin: 0;">Code Eagles 🦅</h1>
+                <p style="font-size: 1.2em;">Empowering Your Learning Journey</p>
+              </header>
+              <main style="padding: 20px;">
+                <h2 style="color: #4CAF50;">📘 New Lecture Created: "${title}"</h2>
+                <p>Dear User,</p>
+                <p>We're excited to inform you that a new lecture titled <strong>"${title}"</strong> has been added to your group! 🎉</p>
+                <p>You can now explore the lecture materials and access all the resources provided to enhance your learning experience.</p>
+              </main>
+              <footer style="background-color: #f9f9f9; text-align: center; padding: 10px; font-size: 0.9em; color: #666;">
+                <p>Thank you for being part of Code Eagles. 🦅</p>
+                <p>For any questions, feel free to reach out to us at <a href="mailto:codeeagles653@gmail.com
+" style="color: #4CAF50;">codeeagles653@gmail.com</a>.</p>
+              </footer>
+            </div>
+          `,
           text: `Dear User,\n\nA new lecture titled "${title}" has been created in your group. You can now access the lecture and its resources.\n\nBest regards,\nCode Eagles`,
         };
+
 
         try {
           await transporter.sendMail(mailOptions);
@@ -73,6 +103,7 @@ exports.createLectures = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 
 
@@ -206,13 +237,16 @@ exports.attendLecture = async (req, res) => {
       return res.status(403).json({ message: 'User is not approved in this group' });
     }
 
-    const alreadyAttended = user.attendance.some(att => att.lectureId.toString() === lectureId);
+    const absenceIndex = user.attendance.findIndex(att => att.lectureId.toString() === lectureId && att.attendanceStatus === 'absent');
+
+    if (absenceIndex !== -1) {
+      user.attendance.splice(absenceIndex, 1);
+    }
+
+    const alreadyAttended = user.attendance.some(att => att.lectureId.toString() === lectureId && att.attendanceStatus === 'present');
     if (alreadyAttended) {
       return res.status(400).json({ message: 'User already attended this lecture' });
     }
-
-    lecture.attendees.push({ userId });
-    lecture.attendanceCount += 1;
 
     user.attendance.push({
       lectureId,
@@ -221,6 +255,13 @@ exports.attendLecture = async (req, res) => {
     });
 
     user.totalPresent += 1;
+
+    const totalLectures = await Lectures.countDocuments({ group_id: group._id });
+    const totalAbsent = totalLectures - user.totalPresent;
+    user.totalAbsent = totalAbsent;
+
+    lecture.attendees.push({ userId });
+    lecture.attendanceCount += 1;
 
     await lecture.save();
     await user.save();
@@ -231,6 +272,8 @@ exports.attendLecture = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+
 
 
 // Get all users' attendance for a specific lecture (Admin only)

@@ -16,7 +16,6 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ message: 'User ID is missing from token' });
     }
 
-    // تحقق من وجود المستخدم في قاعدة البيانات
     const user = await User.findById(decoded.id);
 
     if (!user) {
