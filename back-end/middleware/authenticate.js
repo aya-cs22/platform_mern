@@ -1,8 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/users');
 
-
-
 const authenticate = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   if (!authHeader) {
@@ -13,13 +11,15 @@ const authenticate = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('Decoded JWT:', decoded); // تحقق من الـ decoded object
 
-    // تحقق من وجود الـ user في قاعدة البيانات
+    if (!decoded || !decoded.id) {
+      return res.status(401).json({ message: 'User ID is missing from token' });
+    }
+
+    // تحقق من وجود المستخدم في قاعدة البيانات
     const user = await User.findById(decoded.id);
 
     if (!user) {
-      console.log('User not found with ID:', decoded.id); // أضف رسالة لزيادة التوضيح
       return res.status(404).json({ message: 'User not found' });
     }
 
@@ -31,7 +31,7 @@ const authenticate = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error('Error during authentication:', error); // سجل أي خطأ يحدث أثناء التوثيق
+    console.error('Error during authentication:', error); // سجل الخطأ
     res.status(401).json({ message: 'Invalid token or user not found' });
   }
 };
