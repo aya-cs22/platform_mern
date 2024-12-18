@@ -480,6 +480,7 @@ exports.createTaskInLecture = async (req, res) => {
       description_task,
       end_date,
     };
+    // const updatedLecture = await Lectures.findById(lectureId).populate('tasks');
 
     lecture.tasks.push(newTask);
     lecture.updated_at = Date.now();
@@ -510,9 +511,30 @@ exports.createTaskInLecture = async (req, res) => {
         const mailOptions = {
           from: process.env.ADMIN_EMAIL,
           to: email,
-          subject: `New Task Created: ${description_task}`,
-          text: `Dear User,\n\nA new task titled "${description_task}" has been created in your lecture. You can now access the task and submit your work.\n\nBest regards,\nCode Eagles`,
+          subject: `🚀 New Task Created: "${description_task}"`,
+          html: `
+            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <header style="background-color: #4CAF50; color: white; text-align: center; padding: 20px;">
+                <h1 style="margin: 0;">Code Eagles 🦅</h1>
+                <p style="font-size: 1.2em;">Your Learning Partner</p>
+              </header>
+              <main style="padding: 20px;">
+                <h2 style="color: #4CAF50;">📋 New Task Created: "${description_task}"</h2>
+                <p>Dear User,</p>
+                <p>We're excited to inform you that a new task titled <strong>"${description_task}"</strong> has been added to your lecture! 🎉</p>
+                <p><strong>Task Due Date:</strong> ${end_date}</p>
+                <p>Please review the task and submit your work before the due date.</p>
+              </main>
+              <footer style="background-color: #f9f9f9; text-align: center; padding: 10px; font-size: 0.9em; color: #666;">
+                <p>Thank you for being part of Code Eagles. 🦅</p>
+                <p>If you have any questions, feel free to contact us at <a href="mailto:codeeagles653@gmail.com
+" style="color: #4CAF50;">codeeagles653@gmail.com</a>.</p>
+              </footer>
+            </div>
+          `,
+          text: `Dear User,\n\nA new task titled "${description_task}" has been created in your lecture. You can now access the task and submit your work before the due date: ${end_date}.\n\nBest regards,\nCode Eagles`,
         };
+
 
         try {
           await transporter.sendMail(mailOptions);
@@ -523,7 +545,7 @@ exports.createTaskInLecture = async (req, res) => {
       });
     }
 
-    return res.status(201).json({ message: 'Task created successfully', task: newTask });
+    return res.status(201).json({ message: 'Task created successfully', newTask });
   } catch (error) {
     console.error('Error creating task:', error);
     return res.status(500).json({ message: 'Server error' });
@@ -584,10 +606,28 @@ exports.updateTaskInLecture = async (req, res) => {
         const mailOptions = {
           from: process.env.ADMIN_EMAIL,
           to: email,
-          subject: `Task Updated: ${description_task}`,
-          text: `Dear User,\n\nThe task titled "${description_task}" in your lecture has been updated. Please review the changes and proceed accordingly.\n\nBest regards,\n
-code eagles`,
+          subject: `🚀 Task Updated: "${description_task}" in Lecture "${lecture.title}"`,
+          html: `
+            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <header style="background-color: #4CAF50; color: white; text-align: center; padding: 20px;">
+                <h1 style="margin: 0;">Code Eagles 🦅</h1>
+                <p style="font-size: 1.2em;">Your Learning Partner</p>
+              </header>
+              <main style="padding: 20px;">
+                <h2 style="color: #4CAF50;">🔄 Task Updated: "${description_task}"</h2>
+                <p>Dear User,</p>
+                <p>We're notifying you that the task titled <strong>"${description_task}"</strong> in your lecture <strong>"${lecture.title}"</strong> has been updated. 🎉</p>
+                <p>Please review the changes and proceed accordingly. Stay on top of your learning and keep up the great work!</p>
+              </main>
+              <footer style="background-color: #f9f9f9; text-align: center; padding: 10px; font-size: 0.9em; color: #666;">
+                <p>Thank you for being part of Code Eagles. 🦅</p>
+                <p>If you have any questions, feel free to contact us at <a href="mailto:codeeagles653@gmail.com" style="color: #4CAF50;">codeeagles653@gmail.com</a>.</p>
+              </footer>
+            </div>
+          `,
+          text: `Dear User,\n\nThe task titled "${description_task}" in your lecture "${lecture.title}" has been updated. Please review the changes and proceed accordingly.\n\nBest regards,\nCode Eagles`,
         };
+
 
         try {
           await transporter.sendMail(mailOptions);
