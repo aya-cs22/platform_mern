@@ -437,6 +437,7 @@ exports.getUserNotAttendedLecturesInGroup = async (req, res) => {
 exports.deleteLecturesById = async (req, res) => {
   try {
     const { lectureId } = req.params;
+
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Access denied' });
     }
@@ -446,14 +447,31 @@ exports.deleteLecturesById = async (req, res) => {
       return res.status(404).json({ message: 'Lecture not found' });
     }
 
-    await User.updateMany(
-      { 'attendance.lectureId': lectureId },
-      { $pull: { attendance: { lectureId } } }
-    );
+    const users = await User.find({ 'attendance.lectureId': lectureId });
 
-    res.status(200).json({ message: 'Lecture deleted successfully' });
+    for (const user of users) {
+      const attendanceRecord = user.attendance.find(
+        (record) => record.lectureId.toString() === lectureId
+      );
+
+      if (attendanceRecord) {
+        if (attendanceRecord.attendanceStatus === 'present') {
+          user.totalPresent = Math.max(user.totalPresent - 1, 0);
+        } else if (attendanceRecord.attendanceStatus === 'absent') {
+          user.totalAbsent = Math.max(user.totalAbsent - 1, 0);
+        }
+
+        user.attendance = user.attendance.filter(
+          (record) => record.lectureId.toString() !== lectureId
+        );
+
+        await user.save();
+      }
+    }
+
+    res.status(200).json({ message: 'Lecture and related attendance data deleted successfully' });
   } catch (error) {
-    console.error(error);
+    console.error('Error deleting lecture:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -826,9 +844,31 @@ exports.evaluateTask = async (req, res) => {
       const mailOptions = {
         from: process.env.ADMIN_EMAIL,
         to: user.email,
-        subject: 'Task Evaluation Results',
-        text: `Your task has been evaluated.\nScore: ${score}\nFeedback: ${feedback}`
+        subject: '📊 Task Evaluation Results',
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <header style="background-color: #4CAF50; color: white; text-align: center; padding: 20px;">
+              <h1 style="margin: 0;">Code Eagles 🦅</h1>
+              <p style="font-size: 1.2em;">Your Task Evaluation Results</p>
+            </header>
+            <main style="padding: 20px;">
+              <h2 style="color: #4CAF50;">📊 Task Evaluation Completed!</h2>
+              <p>Dear ${user.name},</p>
+              <p>We have evaluated your task, and here are your results:</p>
+              <p><strong>Score:</strong> ${score}</p>
+              <p><strong>Feedback:</strong></p>
+              <p style="font-style: italic; color: #555;">"${feedback}"</p>
+              <p>Keep up the great work and continue improving! 💪</p>
+            </main>
+            <footer style="background-color: #f9f9f9; text-align: center; padding: 10px; font-size: 0.9em; color: #666;">
+              <p>Thank you for being part of Code Eagles! 🦅</p>
+              <p>If you have any questions or need further assistance, feel free to contact us at <a href="mailto:codeeagles653@gmail.com" style="color: #4CAF50;">codeeagles653@gmail.com</a>.</p>
+            </footer>
+          </div>
+        `,
+        text: `Dear ${user.name},\n\nYour task has been evaluated.\nScore: ${score}\nFeedback: ${feedback}\n\nBest regards,\nCode Eagles`,
       };
+
 
       await transporter.sendMail(mailOptions);
     }
