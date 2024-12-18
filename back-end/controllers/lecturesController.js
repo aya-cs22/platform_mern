@@ -300,7 +300,7 @@ exports.getAttendanceByLecture = async (req, res) => {
       return res.status(404).json({ message: 'No attendees found for this lecture' });
     }
 
-    return res.status(200).json({ attendance });
+    return res.status(200).json({ lectureTitle: lecture.title, attendance });
   } catch (error) {
     console.error('Error fetching attendance:', error);
     res.status(500).json({ message: 'Server error' });
@@ -346,7 +346,7 @@ exports.getUsersNotAttendedLecture = async (req, res) => {
       return res.status(404).json({ message: 'All users attended the lecture' });
     }
 
-    return res.status(200).json({ usersNotAttended });
+    return res.status(200).json({ lectureTitle: lecture.title, usersNotAttended });
   } catch (error) {
     console.error('Error fetching non-attendees:', error);
     res.status(500).json({ message: 'Server error' });
