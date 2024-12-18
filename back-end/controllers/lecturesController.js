@@ -833,7 +833,7 @@ exports.evaluateTask = async (req, res) => {
       await transporter.sendMail(mailOptions);
     }
 
-    return res.status(200).json({ message: 'Task evaluated and email sent successfully' });
+    return res.status(200).json({ message: 'Task evaluated and email sent successfully', score, feedback });
   } catch (error) {
     console.error('Error evaluating task:', error);
     return res.status(500).json({ message: 'Server error' });
