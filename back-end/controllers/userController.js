@@ -682,15 +682,14 @@ exports.getPendingJoinRequestsByGroup = async (req, res) => {
         if (usersWithPendingRequests.length === 0) {
             return res.status(404).json({ message: 'No pending join requests found for this group' });
         }
-        const group = await Groups.findById(groupId);
-        if (!group) {
-            return res.status(404).json({ message: 'Group not found' });
-        }
+
+        const group = await Groups.findById(groupId)
         const pendingRequests = usersWithPendingRequests.map(user => {
             return {
                 userId: user._id,
                 userName: user.name,
-                group: group.title,
+                groupName: group.title,
+                groupDate: group.start_date,
                 pendingGroups: user.groups.filter(group => group.status === 'pending' && group.groupId.toString() === groupId)
             };
         });
