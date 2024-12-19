@@ -61,27 +61,28 @@ exports.register = async (req, res) => {
                 const mailOptions = {
                     from: process.env.ADMIN_EMAIL,
                     to: user.email,
-                    subject: 'Email Verification Code from Code Eagles',
+                    subject: '🔑 Email Verification Code from Code Eagles',
                     html: `
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
                         <header style="background-color: #4CAF50; padding: 20px; text-align: center; color: white;">
-                            <h1 style="margin: 0; font-size: 24px;">Welcome to Code Eagles!</h1>
+                          <h1 style="margin: 0; font-size: 24px;">Welcome to Code Eagles! 🦅</h1>
                         </header>
-                        <div style="padding: 20px;">
-                            <h2 style="font-size: 20px; color: #333;">Hello, ${user.name}!</h2>
-                            <p style="color: #555;">To complete your registration, please verify your email address using the code below:</p>
-                            <div style="text-align: center; margin: 20px 0; padding: 10px; background-color: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;">
-                                <p style="font-size: 1.5em; font-weight: bold; color: #4CAF50;">${user.emailVerificationCode}</p>
-                            </div>
-                            <p style="color: #555;">This code is valid for the next 10 minutes. If you didn’t request this email, please ignore it.</p>
-                            <p style="margin-top: 20px; color: #555;">Happy Coding!<br>The Code Eagles Team</p>
+                        <div style="padding: 20px; background-color: #f9f9f9;">
+                          <h2 style="font-size: 20px; color: #333;">Hello, ${user.name}!</h2>
+                          <p style="color: #555;">To complete your registration, please verify your email address using the code below:</p>
+                          <div style="text-align: center; margin: 20px 0; padding: 15px; background-color: #e1f5e1; border: 1px solid #ddd; border-radius: 5px;">
+                            <p style="font-size: 1.5em; font-weight: bold; color: #4CAF50;">${user.emailVerificationCode}</p>
+                          </div>
+                          <p style="color: #555;">This code is valid for the next 10 minutes. If you didn’t request this email, please ignore it.</p>
+                          <p style="margin-top: 20px; color: #555;">Happy Coding!<br>The Code Eagles Team</p>
                         </div>
                         <footer style="background-color: #f1f1f1; padding: 10px; text-align: center; color: #777; font-size: 14px;">
-                            <p>© 2024 Code Eagles, All rights reserved.</p>
+                          <p>If you have any issues, feel free to <a href="mailto:codeeagles653@gmail.com" style="color: #4CAF50;">contact us</a>.</p>
                         </footer>
-                    </div>
+                      </div>
                     `
                 };
+
                 await transporter.sendMail(mailOptions);
                 return res.status(200).json({ message: 'Verification code resent. Please verify your email.' });
             }
@@ -107,27 +108,28 @@ exports.register = async (req, res) => {
         const mailOptions = {
             from: process.env.ADMIN_EMAIL,
             to: newUser.email,
-            subject: 'Email Verification Code from Code Eagles',
+            subject: '🔑 Email Verification Code from Code Eagles',
             html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
                 <header style="background-color: #4CAF50; padding: 20px; text-align: center; color: white;">
-                    <h1 style="margin: 0; font-size: 24px;">Welcome to Code Eagles!</h1>
+                  <h1 style="margin: 0; font-size: 24px;">Welcome to Code Eagles! 🦅</h1>
                 </header>
-                <div style="padding: 20px;">
-                    <h2 style="font-size: 20px; color: #333;">Hello, ${newUser.name}!</h2>
-                    <p style="color: #555;">To complete your registration, please verify your email address using the code below:</p>
-                    <div style="text-align: center; margin: 20px 0; padding: 10px; background-color: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;">
-                        <p style="font-size: 1.5em; font-weight: bold; color: #4CAF50;">${newUser.emailVerificationCode}</p>
-                    </div>
-                    <p style="color: #555;">This code is valid for the next 10 minutes. If you didn’t request this email, please ignore it.</p>
-                    <p style="margin-top: 20px; color: #555;">Happy Coding!<br>The Code Eagles Team</p>
+                <div style="padding: 20px; background-color: #f9f9f9;">
+                  <h2 style="font-size: 20px; color: #333;">Hello, ${newUser.name}!</h2>
+                  <p style="color: #555;">To complete your registration, please verify your email address using the code below:</p>
+                  <div style="text-align: center; margin: 20px 0; padding: 15px; background-color: #e1f5e1; border: 1px solid #ddd; border-radius: 5px;">
+                    <p style="font-size: 1.5em; font-weight: bold; color: #4CAF50;">${newUser.emailVerificationCode}</p>
+                  </div>
+                  <p style="color: #555;">This code is valid for the next 10 minutes. If you didn’t request this email, please ignore it.</p>
+                  <p style="margin-top: 20px; color: #555;">Happy Coding!<br>The Code Eagles Team</p>
                 </div>
                 <footer style="background-color: #f1f1f1; padding: 10px; text-align: center; color: #777; font-size: 14px;">
-                    <p>© 2024 Code Eagles, All rights reserved.</p>
+                  <p>If you have any issues, feel free to <a href="codeeagles653@gmail.com" style="color: #4CAF50;">contact us</a>.</p>
                 </footer>
-            </div>
+              </div>
             `
         };
+
         await transporter.sendMail(mailOptions);
 
         res.status(200).json({ message: 'Registration successful, please verify your email' });
@@ -205,8 +207,7 @@ exports.forgotPassword = async (req, res) => {
             <p style="margin-top: 20px; color: #555;">Best Regards,<br>The Code Eagles Team</p>
         </div>
         <footer style="background-color: #f1f1f1; padding: 10px; text-align: center; color: #777; font-size: 14px;">
-            <p>© 2024 Code Eagles, All rights reserved.</p>
-            <p style="margin: 0;">Need help? Contact us at <a href="mailto:codeeagles653@gmail.com" style="color: #4CAF50; text-decoration: none;">support@codeeagles.com</a></p>
+            <p style="margin: 0;">Need help? Contact us at <a href="mailto:codeeagles653@gmail.com" style="color: #4CAF50; text-decoration: none;">codeeagles653@gmail.com</a></p>
         </footer>
     </div>
     `
@@ -423,67 +424,152 @@ exports.getAllUsers = async (req, res) => {
 };
 
 
-exports.updateUser = async (req, res) => {
+
+
+
+
+
+
+
+
+exports.getPendingUsers = async (req, res) => {
     try {
-        const { name, email, password, role, phone_number } = req.body;
-        const updates = {};
-
-        const userIdFromToken = req.user.id;
-        const userIdFromParams = req.params.id;
-
-        if (!userIdFromParams || userIdFromToken === userIdFromParams) {
-            if (name) updates.name = name;
-
-            if (email) {
-                const existingUser = await User.findOne({ email });
-                if (existingUser && existingUser.id !== userIdFromToken) {
-                    return res.status(400).json({ message: 'Email already exists' });
-                } else {
-                    updates.email = email;
-                }
-            }
-
-            if (password) {
-                if (password.length < 10) {
-                    return res.status(400).json({ message: 'Password must be at least 10 characters' });
-                }
-                const salt = await bcrypt.genSalt(10);
-                updates.password = await bcrypt.hash(password, salt);
-            }
-
-            if (phone_number) {
-                updates.phone_number = phone_number;
-            }
-
-        } else if (req.user.role === 'admin' && userIdFromParams) {
-            if (role) updates.role = role;
-
-        } else {
+        if (req.user.role !== 'admin') {
             return res.status(403).json({ message: 'Access denied' });
         }
 
-        const user = await User.findByIdAndUpdate(userIdFromParams || userIdFromToken, updates, { new: true });
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+        const users = await User.find({
+            "groups.status": "pending"
+        }).select('-password');
+
+        if (users.length === 0) {
+            return res.status(404).json({ message: 'No pending users found' });
         }
 
-        if (password) {
-            const token = generateToken(user);
-            return res.status(200).json({
-                message: 'User updated successfully',
-                token: token,
-                user: user
-            });
+        const pendingUsersData = [];
+
+        for (const user of users) {
+            const pendingGroups = user.groups.filter(group => group.status === 'pending');
+
+            for (const group of pendingGroups) {
+                const groupDetails = await Groups.findById(group.groupId).select('title');
+
+                if (groupDetails) {
+                    pendingUsersData.push({
+                        groupId: group.groupId,
+                        groupName: groupDetails.title,
+                        userId: user._id,
+                        email: user.email,
+                        userName: user.name,
+                    });
+                }
+            }
         }
 
-        res.status(200).json(user);
+        if (pendingUsersData.length === 0) {
+            return res.status(404).json({ message: 'No pending group requests found' });
+        }
+
+        res.status(200).json(pendingUsersData);
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });
     }
 };
 
-// delete user by admin and himself
+
+//update user by himself
+
+exports.updateUser = async (req, res) => {
+    try {
+        const { name, email, password, phone_number } = req.body;
+        const userIdFromToken = req.user.id;
+        const updates = {};
+
+        const userFromDb = await User.findById(userIdFromToken);
+        if (!userFromDb) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (name) updates.name = name;
+
+        if (email && email !== userFromDb.email) {
+            const existingUser = await User.findOne({ email });
+            if (existingUser) {
+                return res.status(400).json({ message: 'Email already exists, please use a different email' });
+            }
+            updates.email = email;
+        }
+
+        if (password) {
+            if (password.length < 10) {
+                return res.status(400).json({ message: 'Password must be at least 10 characters' });
+            }
+            const salt = await bcrypt.genSalt(10);
+            updates.password = await bcrypt.hash(password, salt);
+        }
+
+        if (phone_number) updates.phone_number = phone_number;
+
+        const updatedUser = await User.findByIdAndUpdate(userIdFromToken, updates, { new: true });
+        if (!updatedUser) {
+            return res.status(400).json({ message: 'Failed to update user' });
+        }
+
+        console.log('User updated successfully:', updatedUser);
+        return res.status(200).json({ message: 'User updated successfully', user: updatedUser });
+
+    } catch (error) {
+        console.error('Error:', error);
+        return res.status(500).json({ message: 'Server error' });
+    }
+};
+
+
+
+
+// update role user by admin
+exports.updateUserRole = async (req, res) => {
+    try {
+        const { role } = req.body;
+        const userIdFromToken = req.user.id;
+        const userIdToUpdate = req.params.id;
+
+        console.log('Admin User ID from Token:', userIdFromToken);
+        console.log('User ID to Update Role:', userIdToUpdate);
+
+        const userRoleFromToken = req.user.role;
+        if (userRoleFromToken !== 'admin') {
+            return res.status(403).json({ message: 'Access denied. Only admin can update role.' });
+        }
+
+        const userFromDb = await User.findById(userIdToUpdate);
+        if (!userFromDb) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (role) {
+            userFromDb.role = role;
+            await userFromDb.save();
+            console.log('User role updated successfully:', userFromDb);
+
+            return res.status(200).json({
+                message: 'User role updated successfully',
+                user: userFromDb
+            });
+        } else {
+            return res.status(400).json({ message: 'Role is required to update' });
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        return res.status(500).json({ message: 'Server error' });
+    }
+};
+
+
+
+
 exports.deleteUser = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -537,6 +623,7 @@ exports.deleteUser = async (req, res) => {
         session.endSession();
     }
 };
+
 
 exports.submitFeedback = async (req, res) => {
     const { feedback } = req.body;

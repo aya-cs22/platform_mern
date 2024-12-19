@@ -1,38 +1,38 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/users');
+const mongoose = require('mongoose'); // لاستعمال ObjectId
 
 const authenticate = async (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  if (!authHeader) {
-    return res.status(401).json({ message: 'Authentication token required' });
-  }
+  const token = req.header('Authorization')?.replace('Bearer ', '');
 
-  const token = authHeader.replace('Bearer', '').trim();
+  if (!token) {
+    return res.status(401).json({ message: 'Access denied. No token provided.' });
+  }
 
   try {
+    // التحقق من التوكن
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    if (!decoded || !decoded.id) {
-      return res.status(401).json({ message: 'User ID is missing from token' });
-    }
-
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(decoded.id); // تعديل حسب نموذج الـ User لديك
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(401).json({ message: 'User not found.' });
     }
 
+    // التحقق من الـ role و المجموعات
     req.user = {
-      id: decoded.id,
-      role: decoded.role,
-      groups: user.groups
+      id: user._id,
+      role: user.role,
+      groups: user.groups || [], // إذا كانت groups فارغة، تكون عبارة عن مصفوفة فارغة
     };
 
-    next();
+    console.log('User authenticated:', req.user);
+    next(); // متابعة التنفيذ للفانكشن التالية
   } catch (error) {
-    console.error('Error during authentication:', error); // سجل الخطأ
-    res.status(401).json({ message: 'Invalid token or user not found' });
+    console.error('Error in authentication:', error);
+    return res.status(400).json({ message: 'Invalid token.' });
   }
 };
+
+
 
 module.exports = authenticate;
