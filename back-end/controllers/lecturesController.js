@@ -371,7 +371,9 @@ exports.getUserAttendedLecturesInGroup = async (req, res) => {
     }
 
     const attendedLectures = lectures.filter((lecture) =>
-      lecture.attendees.some((attendee) => attendee.userId._id.toString() === userId)
+      lecture.attendees.some((attendee) =>
+        attendee.userId && attendee.userId._id.equals(userId)
+      )
     );
 
     if (attendedLectures.length === 0) {
@@ -381,8 +383,8 @@ exports.getUserAttendedLecturesInGroup = async (req, res) => {
     const response = attendedLectures.map((lecture) => ({
       title: lecture.title,
       attendedAt: lecture.attendees.find(
-        (attendee) => attendee.userId._id.toString() === userId
-      )?.attendedAt,
+        (attendee) => attendee.userId && attendee.userId._id.equals(userId)
+      )?.attendedAt || 'N/A',
     }));
 
     res.status(200).json({ attendedLectures: response });
@@ -391,7 +393,6 @@ exports.getUserAttendedLecturesInGroup = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
-
 
 
 
@@ -430,9 +431,6 @@ exports.getUserNotAttendedLecturesInGroup = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
-
-
-
 // delet lecture by id
 exports.deleteLecturesById = async (req, res) => {
   try {
@@ -465,6 +463,9 @@ exports.deleteLecturesById = async (req, res) => {
           (record) => record.lectureId.toString() !== lectureId
         );
 
+        user.tasks = user.tasks.filter(
+          (task) => task.lectureId.toString() !== lectureId
+        );
         await user.save();
       }
     }
@@ -903,6 +904,7 @@ exports.getAllUserSubmissionsForTask = async (req, res) => {
     }
 
     const taskSubmissions = task.submissions.map(submission => ({
+      submissionId: submission._id,
       userId: submission.userId,
       submissionLink: submission.submissionLink,
       submittedAt: submission.submittedAt,

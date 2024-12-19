@@ -820,9 +820,25 @@ exports.acceptJoinRequest = async (req, res) => {
         const mailOptions = {
             from: process.env.ADMIN_EMAIL,
             to: user.email,
-            subject: 'Your Join Request Has Been Approved',
-            text: `Hello ${user.name},\n\nYour request to join the group "${group.title}" has been approved. Welcome to the group!\n\nBest Regards,\nThe Team`
+            subject: '🎉 Your Join Request Has Been Approved!',
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                <header style="background-color: #4CAF50; padding: 20px; text-align: center; color: white;">
+                  <h1 style="margin: 0; font-size: 24px;">Welcome to the ${group.title} Group!</h1>
+                </header>
+                <div style="padding: 20px; background-color: #f9f9f9;">
+                  <h2 style="font-size: 20px; color: #333;">Hello, ${user.name}!</h2>
+                  <p style="color: #555;">We are pleased to inform you that your request to join the group <strong>"${group.title}"</strong> has been approved. You are now part of our amazing community!</p>
+                  <p style="color: #555;">We are excited to have you on board and look forward to your contributions. If you have any questions or need help, feel free to reach out to us.</p>
+                  <p style="margin-top: 20px; color: #555;">Best regards,<br>The Team</p>
+                </div>
+                <footer style="background-color: #f1f1f1; padding: 10px; text-align: center; color: #777; font-size: 14px;">
+                <p style="margin: 0;">Need help? Contact us at <a href="mailto:codeeagles653@gmail.com" style="color:  #4CAF50; text-decoration: none;">codeeagles653@gmail.com</a></p>
+                </footer>
+              </div>
+            `
         };
+
 
         transporter.sendMail(mailOptions, (error, info) => {
             if (error) {
@@ -875,8 +891,24 @@ exports.rejectJoinRequest = async (req, res) => {
         const mailOptions = {
             from: process.env.ADMIN_EMAIL,
             to: user.email,
-            subject: `Your Join Request Has Been Rejected`,
-            text: `Hello ${user.name},\n\nWe regret to inform you that your request to join the group "${group.title}" has been rejected. If you have any questions, feel free to reach out.\n\nBest Regards,\nThe Team`
+            subject: '❌ Your Join Request Has Been Rejected',
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                <header style="background-color: #FF6347; padding: 20px; text-align: center; color: white;">
+                  <h1 style="margin: 0; font-size: 24px;">Your Request Has Been Rejected</h1>
+                </header>
+                <div style="padding: 20px; background-color: #f9f9f9;">
+                  <h2 style="font-size: 20px; color: #333;">Hello, ${user.name}!</h2>
+                  <p style="color: #555;">We regret to inform you that your request to join the group <strong>"${group.title}"</strong> has been rejected.</p>
+                  <p style="color: #555;">If you have any questions or concerns, please feel free to reach out to us. We are here to assist you.</p>
+                  <p style="margin-top: 20px; color: #555;">Best regards,<br>The Team</p>
+                </div>
+                <footer style="background-color: #f1f1f1; padding: 10px; text-align: center; color: #777; font-size: 14px;">
+                <p style="margin: 0;">Need help? Contact us at <a href="mailto:codeeagles653@gmail.com" style="color:  #FF6347; text-decoration: none;">codeeagles653@gmail.com</a></p>
+
+                </footer>
+              </div>
+            `
         };
 
         transporter.sendMail(mailOptions, (error, info) => {
@@ -898,7 +930,6 @@ exports.rejectJoinRequest = async (req, res) => {
 
 
 
-
 exports.updateJoinRequestStatus = async (req, res) => {
     try {
         if (req.user.role !== 'admin') {
@@ -907,6 +938,7 @@ exports.updateJoinRequestStatus = async (req, res) => {
 
         const { groupId, userId } = req.params;
         const { status } = req.body;
+        const group = await Groups.findById(groupId);
 
         if (status !== 'approved' && status !== 'rejected') {
             return res.status(400).json({ message: 'Invalid status. It must be "approved" or "rejected".' });
@@ -921,6 +953,14 @@ exports.updateJoinRequestStatus = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
+        let mailOptions = {
+            from: process.env.ADMIN_EMAIL,
+            to: user.email,
+            subject: '',
+            html: ''
+        };
+
+        // Handle rejected status
         if (status === 'rejected') {
             await Groups.updateOne(
                 { _id: groupId },
@@ -932,10 +972,35 @@ exports.updateJoinRequestStatus = async (req, res) => {
                 { $pull: { groups: { groupId: groupId } } }
             );
 
-            return res.status(200).json({ message: 'Request rejected and user removed from the group' });
+            // Email content for rejection
+            mailOptions.subject = '❌ Your Join Request Has Been Rejected';
+            mailOptions.html = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                    <header style="background-color: #FF6347; padding: 20px; text-align: center; color: white;">
+                        <h1 style="margin: 0; font-size: 24px;">Your Request Has Been Rejected</h1>
+                    </header>
+                    <div style="padding: 20px; background-color: #f9f9f9;">
+                        <h2 style="font-size: 20px; color: #333;">Hello, ${user.name}!</h2>
+                        <p style="color: #555;">We regret to inform you that your request to join the group <strong>"${group.title}"</strong> has been rejected.</p>
+                        <p style="color: #555;">If you have any questions or concerns, please feel free to reach out to us. We are here to assist you.</p>
+                        <p style="margin-top: 20px; color: #555;">Best regards,<br>The Team</p>
+                    </div>
+                    <footer style="background-color: #f1f1f1; padding: 10px; text-align: center; color: #777; font-size: 14px;">
+                        <p style="margin: 0;">Need help? Contact us at <a href="mailto:codeeagles653@gmail.com" style="color:  #FF6347; text-decoration: none;">codeeagles653@gmail.com</a></p>
+                    </footer>
+                </div>
+            `;
         }
 
+        // Handle approved status
         if (status === 'approved') {
+            // Check if user is already approved
+            const isAlreadyApproved = user.groups.some(group => group.groupId.toString() === groupId && group.status === 'approved');
+
+            if (isAlreadyApproved) {
+                return res.status(400).json({ message: 'User has already been approved for this group' });
+            }
+
             await Groups.updateOne(
                 { _id: groupId },
                 { $addToSet: { members: { user_id: userId } } }
@@ -946,8 +1011,35 @@ exports.updateJoinRequestStatus = async (req, res) => {
                 { $set: { "groups.$.status": 'approved' } }
             );
 
-            return res.status(200).json({ message: 'Request approved and user added to the group' });
+            // Email content for approval
+            mailOptions.subject = '🎉 Your Join Request Has Been Approved!';
+            mailOptions.html = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                    <header style="background-color: #4CAF50; padding: 20px; text-align: center; color: white;">
+                        <h1 style="margin: 0; font-size: 24px;">Welcome to the ${group.title} Group!</h1>
+                    </header>
+                    <div style="padding: 20px; background-color: #f9f9f9;">
+                        <h2 style="font-size: 20px; color: #333;">Hello, ${user.name}!</h2>
+                        <p style="color: #555;">We are pleased to inform you that your request to join the group <strong>"${group.title}"</strong> has been approved. You are now part of our amazing community!</p>
+                        <p style="color: #555;">We are excited to have you on board and look forward to your contributions. If you have any questions or need help, feel free to reach out to us.</p>
+                        <p style="margin-top: 20px; color: #555;">Best regards,<br>The Team</p>
+                    </div>
+                    <footer style="background-color: #f1f1f1; padding: 10px; text-align: center; color: #777; font-size: 14px;">
+                        <p style="margin: 0;">Need help? Contact us at <a href="mailto:codeeagles653@gmail.com" style="color:  #4CAF50; text-decoration: none;">codeeagles653@gmail.com</a></p>
+                    </footer>
+                </div>
+            `;
         }
+
+        // Send email
+        transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+                console.error('Error sending email:', error);
+                return res.status(500).json({ message: 'Error sending email' });
+            }
+            console.log('Email sent:', info.response);
+            return res.status(200).json({ message: `Request ${status} successfully` });
+        });
 
     } catch (error) {
         console.error('Error in updating join request status:', error);
